@@ -7,31 +7,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - run: sudo apt-get update -y
-      - run: >-
-          sudo apt-get install -y
-          texlive-publishers
-          texlive-latex-extra
-          texlive-fonts-recommended
-          texlive-science
-          texlive-pictures
-          latexmk
-      - uses: actions/checkout@v2
-      - run: latexmk -pdf paper.tex
-      - id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+      - name: Install LaTeX
+        run: sudo apt-get update -y && sudo apt-get install -y texlive-full latexmk
+      - name: Build PDF
+        run: latexmk -pdf -shell-escape -bibtex -interaction=nonstopmode paper.tex
+      - name: Upload PDF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-pdf
+          path: paper.pdf
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: release-${{ github.sha }}
-          release_name: Release ${{ github.sha }}
-          draft: false
-          prerelease: false
-      - uses: actions/upload-release-asset@v1
+          name: Release ${{ github.sha }}
+          files: paper.pdf
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/paper.pdf
-          asset_name: paper.pdf
-          asset_content_type: application/pdf
