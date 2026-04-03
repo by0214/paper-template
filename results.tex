@@ -1,109 +1,118 @@
-\section{Experimental Results}\label{sec:results}
+\section{Experiments}
+\subsection{Experimental Settings}
+\paragraph{Benchmarks} We evaluate SPRM on two representative benchmarks for process reward modeling: \textbf{ProcessBench} \citep{zheng2025processbench} and \textbf{PRMBench} \citep{DBLP:prmbench}. ProcessBench focuses on step-level error localization in multi-step mathematical reasoning, while PRMBench evaluates trajectory quality from complementary perspectives. We compare SPRM against a range of open-source PRMs and LLM-as-a-Judge baselines. Results are reported in Table~\ref{tab:processbench_res} and Table~\ref{tab:prmbench_types_en}.
 
-\subsection{Section Organization}\label{sec:results:organization}
+\paragraph{Baselines}
 
-This section should discuss
-the experimental setup and results
-in your experiments.
-More often than not,
-it should include the following subsections.
+We compare with representative publicly available PRMs that differ in how they construct process-level supervision:
 
-\subsection{Experimental Setup}\label{sec:results:setup}
-
-This subsection should discuss:
 \begin{itemize}
-    \item Datasets
-    \item Metrics
-    \item Hyperparameters
-    \item Baselines
-    \item Model Architectures
+    \item \textbf{Human-annotated supervision}: Qwen2.5-Math-7B-PRM800K \citep{zhang-etal-2025-lessons} is fine-tuned on PRM800K with Qwen2.5-Math-7B-Instruct \citep{Qwen2.5-MathTechnicalReport}, and ReasonEval-7B \citep{DBLP:ReasonEval} is trained on human annotations emphasizing step validity and redundancy.
+    \item \textbf{MC-based supervision}: Math-Shepherd-7B \citep{wang2024math} is trained with MC-annotated data; RLHFlow-DeepSeek-8B and RLHFlow-Mistral-8B \citep{dong2024rlhf} combine MC-generated labels with online reinforcement learning for process modeling.
+    \item \textbf{Outcome-reward broadcasting}: OVM-Qwen3-4B \citep{ovm:conf/naacl/YuGW24} models process-label statistics by broadcasting final rewards. We reproduce this baseline using its open-source training framework with Qwen3-4B-Instruct-2507 \citep{qwen3technicalreport} as the backbone.
+    \item \textbf{First-error boundary modeling}: PQM-DeepSeek-7B-zeta4 \citep{DBLP:conf/iclr/LiL25a} models first-error boundaries with a ranking loss.
+    \item \textbf{Strong open-source PRM baseline}: Skywork-PRM-7B \citep{skywork} integrates o1-style deliberate reasoning strategies and is trained from Qwen2.5-7B-Math-Instruct.
 \end{itemize}
 
-\subsection{Main Results}\label{sec:results:main}
+These baselines cover representative recent paradigms for process reward modeling and step-level reasoning evaluation.
 
-This subsection should discuss:
-\begin{itemize}
-    \item Comparison with baselines
-    \begin{itemize}
-        \item Qualitative / visual results
-        \item Quantitative results
-    \end{itemize}
-    \item Analysis and discussion
-\end{itemize}
+\paragraph{Metrics} We follow the official evaluation protocols of both benchmarks. For ProcessBench, we report per-domain \textit{Err}, \textit{Cor}, and \textit{F1}, together with the average F1 across domains. For PRMBench, we report category scores for \textit{Simplicity}, \textit{Soundness}, and \textit{Sensitivity}, as well as the overall score.
 
-For tabular results,
-follow the example below,
-rendered as \Cref{tab:example}.
+\paragraph{Implementation Details} Our framework has three stages. Unless otherwise stated, we use Qwen3-4B-Instruct-2507 as the backbone.
 
-For plots,
-include the plot ``.py'' files
-in \verb|figures/| directory,
-you can use \verb|figures/plot_example.py| as a template,
-which is rendered as \Cref{fig:plot:matplotlib}.
-Alternatively,
-you may include the plot data
-in a CSV file located in \verb|data/| directory,
-and plot the results using TikZ + PGFPlots.
-For instance,
-\Cref{fig:plot:tikz} is rendered
-from \verb|figures/data/plot_example.csv|.
-\input{tables/example}
-\begin{figure}[ht]
-    \centering
-    \hpad
-    \begin{subfigure}{0.45\linewidth}
-        \centering
-        \includegraphics[width=\linewidth]{plot_example}
-        \caption{%
-            An example plot using Matplotlib.
-        }\label{fig:plot:matplotlib}
-    \end{subfigure}
-    \hpad
-    \begin{subfigure}{0.45\textwidth}
-        \centering
-        \tikzsnfn{plot_example_tikz}
-        \begin{tikzpicture}
-            \begin{axis}[
-                cycle list/Dark2,
-                width=\textwidth,
-                height=0.8\textwidth,
-                xlabel={\( x \)},
-                ylabel={\( \sin\parens{x} \)},
-                xtick={0, 1, ..., 6},
-                ytick={-1, -0.5, ..., 1},
-                xmin=0,
-                xmax=6.28318530718,
-                legend pos=north west,
-                grid=both,
-            ]
-            \addplot +[
-                line width=1.5pt, solid,
-            ] table[
-                x=time, y=amplitude, col sep=comma,
-            ]{data/plot_example.csv};
-            \end{axis}
-        \end{tikzpicture}
-        \caption{%
-            An example plot using TikZ + PGFPlots.
-        }\label{fig:plot:tikz}
-    \end{subfigure}
-    \hpad
-    \caption{%
-        Example plots.
-    }\label{fig:plot}
-\end{figure}
+\textbf{Stage 1: Trajectory scorer training}
+We randomly sample 220K trajectories from Math-Shepherd and use the backbone to extract final-layer hidden states.
+We train a single-layer BiLSTM with batch size 128 and learning rate $1\times10^{-4}$, with early stopping (patience 5).
+The data are split into train/validation/test with a ratio of $0.8/0.1/0.1$.
 
-\subsection{Additional Results}\label{sec:results:additional}
+\textbf{Stage 2: Step-level attribution construction}
+We compute step-level attribution signals using Integrated Gradients with 64 integration steps.
+The IG target is the trajectory scorer logit.
+For each step, we additionally compute a causal ablation score by replacing the step feature with a baseline vector and measuring the score change.
+The global prior is estimated through cross-trajectory semantic nearest-neighbor retrieval. We use Faiss \citep{douze2024faiss} with an IVF4096\_HNSW32,Flat index for approximate search.
+From a search pool of 400 trajectories, we retrieve the top 50 neighbors and compute similarity-weighted reward statistics using ReLU-based weights.
 
-This subsection should discuss
-additional relevant results
-that are not included
-in \Cref{sec:results:main}.
+\textbf{Stage 3: PRM training}
+The constructed step-level signals are used to train the final process reward model.
+We perform LoRA fine-tuning on the backbone with a maximum context length of 4096.
+Training runs for 1 epoch with learning rate $5\times10^{-5}$ and global batch size 32.
 
-\subsection{Ablation and Sensitivity Analysis}\label{sec:results:ablation}
+\subsection{Benchmark Evaluation}
+\begin{table*}[t!]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.1}
+\caption{ProcessBench results. Bold indicates the best per metric excluding GPT-4o, o1-mini, Qwen2.5-72B-Instruct, Qwen2.5-Math-72B-Instruct, and Llama-3.3-70B-Instruct. Data for models marked with an asterisk ($*$) are sourced from \citep{zhang-etal-2025-lessons}.}
+\label{tab:processbench_res}
+\resizebox{0.97\textwidth}{!}{%
+\begin{tabular}{llccccccccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Type}} & \multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{GSM8K}} & \multicolumn{3}{c}{\textbf{MATH}} & \multicolumn{3}{c}{\textbf{OLYMPIADBENCH}} & \multicolumn{3}{c}{\textbf{OMNIMATH}} & \multirow{2}{*}{\textbf{Avg\_F1}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
+ & & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & \\
+\midrule
+\multicolumn{15}{l}{\textit{LLM-as-a-Judge (Closed-source)}} \\
+ & GPT-4o* & 70.0 & 91.2 & 79.2 & 54.4 & 76.6 & 63.6 & 45.8 & 58.4 & 51.4 & 45.2 & 65.6 & 53.5 & 61.9 \\
+ & o1-mini* & 88.9 & 97.9 & 93.2 & 83.5 & 95.1 & 88.9 & 80.2 & 95.6 & 87.2 & 74.8 & 91.7 & 82.4 & 87.9 \\
+\midrule
+\multicolumn{15}{l}{\textit{LLM-as-a-Judge (Open-source)}} \\
+ & Llama-3.3-70B-Instruct* & 72.5 & 96.9 & 82.9 & 43.3 & 83.2 & 59.4 & 31.0 & 94.1 & 46.7 & 28.2 & 90.5 & 43.0 & 58.0 \\
+ & Qwen2.5-Math-72B-Instruct* & 49.8 & 96.9 & 65.8 & 36.0 & 94.3 & 52.1 & 19.5 & 97.3 & 32.5 & 19.0 & 96.3 & 31.7 & 45.5 \\
+ & Qwen2.5-72B-Instruct* & 62.8 & 96.9 & 76.2 & 46.3 & 93.1 & 61.8 & 38.7 & 92.6 & 54.6 & 36.6 & 90.9 & 52.2 & 61.2 \\
+\midrule
+\multicolumn{15}{l}{\textit{PRMs}} \\
+ & Math-Shepherd-7B             & 33.1 & 88.7 & 48.2 & 17.8 & 84.1 & 29.4 & 15.0 & 68.2 & 24.6 & 15.2 & 74.2 & 25.2 & 31.9 \\
+ & RLHFlow-Mistral-8B           & 34.2 & \textbf{98.4} & 50.9 & 21.9 & 72.4 & 33.6 & 8.6 & 47.8 & 14.6 & 9.6 & 45.6 & 15.9 & 28.8 \\
+ & RLHFlow-DeepSeek-8B          & 24.6 & \textbf{98.4} & 39.4 & 22.6 & 78.1 & 35.0 & 10.3 & 51.3 & 17.1 & 10.3 & 51.9 & 17.2 & 27.2 \\
+ & Skywork-PRM-7B               & \textbf{58.4} & 70.0 & 63.7 & 40.7 & 62.3 & 49.3 & 16.0 & 20.0 & 17.8 & 12.3 & 34.4 & 18.2 & 37.3 \\
+ & ReasonEval-7B                & 19.8 & 97.4 & 32.9 & 27.4 & 82.5 & 41.2 & 22.7 & 64.6 & 33.6 & 21.5 & 72.6 & 33.1 & 35.2 \\
+ & Qwen2.5-Math-7B-Math-Shepherd* & 46.4 & 95.9 & 62.4 & 18.9 & \textbf{96.6} & 31.6 & 7.4 & \textbf{93.8} & 13.7 & 4.0 & \textbf{95.6} & 7.7 & 28.9 \\
+ & Qwen2.5-Math-7B-PRM800K      & 52.8 & 94.7 & 67.8 & 47.8 & 91.2 & 62.7 & 33.7 & 85.2 & 48.3 & 27.1 & 87.2 & 41.3 & 55.0 \\
+ & OVM-Qwen3-4B                 & 4.8 & 56.5 & 8.9 & 37.7 & 85.5 & 52.3 & 31.0 & 79.9 & 44.7 & 23.3 & 80.5 & 36.2 & 35.5 \\
+ & PQM-DeepSeek-zeta4-7B        & 31.9 & 40.9 & 35.8 & 22.2 & 19.7 & 20.9 & 8.9 & 6.2 & 7.3 & 11.1 & 15.8 & 13.0 & 19.2 \\
+ & SPRM-Qwen3-4B                & 55.5 & 94.8 & \textbf{70.1} & \textbf{52.4} & 76.0 & \textbf{62.8} & \textbf{48.1} & 60.0 & \textbf{53.2} & \textbf{48.6} & 60.2 & \textbf{53.8} & \textbf{60.0} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
 
-This subsection should discuss:
-\begin{itemize}
-    \item Ablation analysis of model components
-    \item Sensitivity analysis of hyperparameters
-\end{itemize}
+\begin{table*}[t!]
+\centering
+\small
+\setlength{\tabcolsep}{4.0pt}
+\renewcommand{\arraystretch}{1.1}
+\caption{PRMBench results. Bold indicates the best per metric excluding closed-source models (GPT-4o and o1-mini).Data for models marked with an asterisk ($*$) are sourced from \citep{DBLP:prmbench}.}
+\label{tab:prmbench_types_en}
+\resizebox{0.97\textwidth}{!}{%
+\begin{tabular}{llccccccccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Type}} & \multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{Simplicity}} & \multicolumn{5}{c}{\textbf{Soundness}} & \multicolumn{4}{c}{\textbf{Sensitivity}} & \multirow{2}{*}{\textbf{Overall}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-10}\cmidrule(lr){11-14}
+ & & NR & NCL & Avg & ES & SC & DC & CI & Avg & PS & DR & MS & Avg & \\
+\midrule
+\multicolumn{15}{l}{\textit{LLM-as-a-Judge (Closed-source)}} \\
+ & GPT-4o  & 57.0 & 62.4 & 59.7 & 72.0 & 69.7 & 70.7 & 71.1 & 70.9 & 62.5 & 65.7 & 99.2 & 75.8 & 66.8 \\
+ & o1-mini & 65.6 & 63.7 & 64.6 & 74.5 & 67.7 & 73.8 & 72.3 & 72.1 & 61.8 & 64.8 & 100.0 & 75.5 & 68.8 \\
+\midrule
+\multicolumn{15}{l}{\textit{PRMs}} \\
+ & Math-Shepherd-7B     & 42.3 & 47.3 & 44.8 & 50.1 & 42.3 & 41.2 & 48.0 & 45.4 & 43.1 & 49.6 & 90.1 & 60.9 & 46.6 \\
+ & RLHFLOW-Mistral-8B   & 46.3 & 47.1 & 46.7 & 56.5 & 54.8 & 54.0 & 63.9 & 57.3 & 51.0 & 55.9 & 98.2 & 68.4 & 54.2 \\
+ & RLHFLOW-DeepSeek-8B  & 46.4 & 48.5 & 47.5 & 55.0 & 54.5 & 53.1 & 65.6 & 57.1 & 48.8 & 55.0 & 99.7 & 67.8 & 53.8 \\
+ & Skywork-PRM-7B       & 40.5 & 48.1 & 44.3 & 45.5 & 36.8 & 38.0 & 43.3 & 40.9 & 42.7 & 45.5 & 93.3 & 60.5 & 43.3 \\
+ & ReasonEval-7B        & 49.2 & 57.1 & 53.2 & 62.1 & \textbf{66.0} & \textbf{61.5} & 65.8 & \textbf{63.9} & 55.6 & 58.0 & 99.1 & 70.9 & 59.8 \\
+ & Qwen2.5-Math-7B-PRM800K & 48.6 & 47.8 & 48.2 & 62.1 & 59.4 & 58.7 & \textbf{68.5} & 62.2 & 52.9 & \textbf{64.0} & \textbf{99.8} & 72.2 & 59.1 \\
+ & OVM-Qwen3-4B         & 50.0 & 43.4 & 46.7 & 45.5 & 48.7 & 46.4 & 47.3 & 47.0 & 46.3 & 47.7 & 95.2 & 63.1 & 47.2 \\
+ & PQM-DeepSeek-zeta4-7B& 17.7 & 25.7 & 21.7 & 22.9 & 16.1 & 16.6 & 18.4 & 18.5 & 21.6 & 20.8 & 43.7 & 28.7 & 20.3 \\
+ & SPRM-Qwen3-4B        & \textbf{51.4} & \textbf{64.4} & \textbf{57.9} & \textbf{65.1} & 58.2 & 56.8 & 62.0 & 60.5 & \textbf{58.0} & 62.3 & 99.3 & \textbf{73.2} & \textbf{60.6} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\paragraph{Results on ProcessBench.} Table~\ref{tab:processbench_res} details model performance on ProcessBench, which assesses the capacity of PRMs to reliably distinguish between correct and incorrect reasoning steps. SPRM-Qwen3-4B achieves the highest average F1 score (60.0) among all evaluated open-source PRMs, demonstrating a substantial +5.0 point improvement over the larger Qwen2.5-Math-7B-PRM800K baseline (55.0). Notably, SPRM secures the leading F1 score across all four mathematical domains: GSM8K (70.1), MATH (62.8), OLYMPIADBENCH (53.2), and OMNIMATH (53.8). The performance advantages are most pronounced on complex, long-horizon benchmarks, with SPRM exhibiting significant gains over Qwen2.5-Math-7B-PRM800K on OLYMPIADBENCH (+4.9 F1) and OMNIMATH (+12.5 F1). These results indicate that SPRM provides superior robustness and accuracy when evaluating extended reasoning trajectories, allowing a 4B parameter model to surpass larger 7B PRMs and remain highly competitive with massive 70B+ LLM-as-a-judge models.
+
+\paragraph{Results on PRMBench.} Table~\ref{tab:prmbench_types_en} reports model performance across the three core dimensions of PRMBench: \textit{Simplicity}, \textit{Soundness}, and \textit{Sensitivity}. SPRM-Qwen3-4B achieves the highest overall score among open-source models (60.6), outperforming larger 7B baselines such as ReasonEval (59.8) and Qwen2.5-Math-PRM800K (59.1). Dimensionally, SPRM demonstrates state-of-the-art open-source performance in \textit{Simplicity} (57.9) and \textit{Sensitivity} (73.2), driven by notable gains in the NCL (64.4) and PS (58.0) sub-metrics. Conversely, its \textit{Soundness} score (60.5) trails both ReasonEval-7B (63.9) and Qwen2.5-Math-7B (62.2); while SPRM achieves the highest ES score (65.1), this indicates that fine-grained semantic consistency remains challenging for smaller parameter architectures. Overall, the results demonstrate that structured attribution successfully enhances error sensitivity and robustness, allowing a 4B model to perform highly competitively, though a gap remains compared to closed-source frontier models like o1-mini (68.8).
+
+\subsection{PRM for Inference}
+[TODO...]

@@ -1,0 +1,51 @@
+\section{Analysis}
+\label{sec:analysis}
+In the main text, we retain only analyses that directly support our core claims, namely the robustness gains from filtering and the temporal Shapley formulation under causal ordering. Implementation-focused analyses---including Stage 1 model selection, input feature selection, and IG baseline selection---are deferred to Appendix~\ref{sec:appendix}.
+
+\subsection{Ablation Study}
+\label{ablation_study}
+Under fixed backbone, training-data scale, and optimization hyperparameters, we perform additive ablations over the key SPRM modules.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/ablation_all_metrics.pdf}
+\caption{Ablation results of SPRM across all reported metrics. The figure summarizes the contribution of each module under a unified training/evaluation protocol.}
+\label{fig:ablation_all_metrics}
+\end{figure*}
+
+Figure~\ref{fig:ablation_all_metrics} reports four variants under a unified protocol: (1) IG-only supervision without \textit{Question\_end} at $\langle\texttt{ST\_END}\rangle$; (2) IG + \textit{Question\_end}; (3) IG + \textit{Question\_end} + $R^{\text{causal}}$ filtering; and (4) the full SPRM that further adds $\delta_{\text{global}}$.
+
+Three observations are consistent across metrics. First, introducing \textit{Question\_end} improves boundary calibration, showing that explicit question-to-reasoning transition signals are useful for step-level supervision. Second, adding $R^{\text{causal}}$ further stabilizes training and improves the balance between \textit{Err} and \textit{Cor}, indicating that causal-consistency filtering suppresses noisy local attributions. Third, incorporating $\delta_{\text{global}}$ brings the strongest gains in error localization on difficult domains; although \textit{Cor} may slightly decrease in some settings, the overall F1 improves, yielding the best trade-off in the full model.
+
+Overall, the ablation confirms that SPRM's performance gain does not come from a single component: local attribution, causal filtering, and global priors contribute complementary benefits.
+
+\subsection{Filter Mechanism}
+We further evaluate whether the filtering mechanism stabilizes step-level attribution signals, and report all metrics under the same evaluation protocol.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/filter_all_metrics.pdf}
+\caption{Impact of the filter mechanism on all evaluation metrics. The plot reports performance differences between variants with and without filtering strategies.}
+\label{fig:filter_all_metrics}
+\end{figure*}
+
+As shown in Figure~\ref{fig:filter_all_metrics}, the filtering mechanism provides more robust gains across multiple metrics. LLM Consistency is especially helpful for first-error localization, while $R^{causal}$ is more stable for judging correct paths, with larger improvements on harder datasets (OLYMPIADBENCH and OMNIMATH).
+
+This trend suggests that raw local attributions contain non-trivial noise that accumulates over long trajectories. LLM Consistency mainly improves sensitivity-oriented indicators by enforcing semantic agreement across neighboring reasoning states, whereas $R^{causal}$ contributes more to path-level stability by suppressing transient attribution spikes that are inconsistent with downstream outcomes. Their gains are therefore complementary rather than redundant.
+
+Notably, improvements are larger on OLYMPIADBENCH and OMNIMATH, where reasoning chains are longer and error propagation is stronger. This supports our hypothesis that filtering primarily improves robustness under distributional and trajectory-length stress, rather than only boosting average-case performance.
+
+\subsection{Shapley Value in Time-series Scenarios}
+We analyze whether Shapley-style attribution can provide a reliable step-level signal for temporally ordered reasoning trajectories. Classical Shapley offers a principled fairness baseline by averaging each participant's marginal contribution over all permutations of an unordered player set \citep{shapley1953value}.
+
+\begin{equation}
+\label{shapley_function}
+\phi_i(v)=\mathbb{E}_{\pi}\Big[v(\mathrm{Pre}_{\pi}(i)\cup\{i\})-v(\mathrm{Pre}_{\pi}(i))\Big]
+\end{equation}
+
+In multi-step reasoning, however, steps are temporally ordered and causally dependent rather than freely permutable. For a trajectory $\tau=(s_1,\dots,s_T)\in\mathcal{D}$ with unique order $(1\prec 2 \prec \dots \prec T)$, the permutation expectation collapses to an ordered marginal form:
+\begin{equation}
+    \phi_t^{\text{ord}} := v_t - v_{t-1}, \qquad v_t := v(\{1,2,\dots,t\}),\; v_0:=v(\emptyset)
+\end{equation}
+
+This ordered form gives an interpretable first-order attribution baseline: positive $\phi_t^{\text{ord}}$ indicates value gain and negative $\phi_t^{\text{ord}}$ indicates potential error contribution. However, as a final supervision signal it is still insufficient for complex reasoning: it depends strongly on value-model calibration \citep{guo2025deepseek}, emphasizes immediate gains while missing delayed effects, under-represents step interactions, and can vary across contexts for semantically similar operations. We therefore treat ordered Shapley attribution as a local prior and combine it with causal filtering and global distribution-level priors to obtain more stable step-level supervision.
