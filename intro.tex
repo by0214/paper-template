@@ -1,22 +1,106 @@
 \section{Introduction}
 
-Large language models (LLMs) have demonstrated strong reasoning ability on tasks such as mathematical proof generation, complex question answering, and code synthesis. Yet their training and alignment are still dominated by outcome-level supervision: rewards are typically assigned only at the final answer, while intermediate steps in long reasoning chains receive little direct feedback. This sparse-reward setting creates a severe temporal credit-assignment problem---the model can tell whether the final result is correct, but not which reasoning steps actually caused that success \citep{uesato2022solving, lightman2023lets}. As a result, process reward models (PRMs), which provide fine-grained step-level feedback, have become a key component in test-time scaling, reranking, and reinforcement learning.
+Large language models (LLMs) have demonstrated strong reasoning ability on
+tasks such as mathematical proof generation, complex question answering, and
+code synthesis.
+Yet their training and alignment are still dominated by outcome-level
+supervision: rewards are typically assigned only to the final answer, while
+intermediate steps in long reasoning chains receive little direct feedback.
+This sparse-reward setting creates a severe temporal credit-assignment
+problem.
+A model can observe whether a trajectory eventually succeeds, but it cannot
+directly tell which steps were responsible for that success
+\citep{uesato2022solving, lightman2023lets}.
+As a result, process reward models (PRMs), which provide fine-grained
+step-level feedback, have become an important component in test-time scaling,
+reranking, and reinforcement learning for LLM reasoning.
 
-However, the primary bottleneck in current PRM development is the automated acquisition of high-quality step-level supervision. Human annotation is reliable but expensive and hard to scale. Monte Carlo-based labeling is more automatic, but it requires large rollout budgets and still suffers from noise. LLM-as-a-judge can further reduce annotation cost, yet its labels may inherit biases from pretraining data and are sensitive to prompt wording and scoring criteria, leading to unstable supervision. As a result, existing PRM pipelines still rely heavily on external annotators or evaluators, which limits robust large-scale reuse.
+The main bottleneck in current PRM development is therefore not the model
+architecture itself, but the acquisition of high-quality step-level
+supervision.
+Human annotation is reliable but expensive and difficult to scale.
+Monte Carlo-based labeling is more automatic, but it requires large rollout
+budgets and often remains noisy.
+LLM-as-a-judge further reduces annotation cost, yet its labels can inherit
+biases from pretraining data and be sensitive to prompt wording or scoring
+criteria, which makes the resulting supervision unstable.
+More broadly, these pipelines still depend on external annotators or
+evaluators to tell the model which intermediate steps are good.
+This dependence limits robustness, scalability, and reuse.
+Meanwhile, outcome-level reinforcement learning methods such as GRPO can
+optimize policies from final rewards, but they do not directly produce a
+reusable source of step-level supervision.
+For long-horizon reasoning, the central challenge remains how to transform a
+single final outcome into reliable credit for individual reasoning steps.
 
-This strong external dependence motivates a different question: can we derive step-level credit from the data itself? A multi-step trajectory that jointly yields a final reward naturally resembles a cooperative game with a shared payoff. This analogy leads to Shapley values, which allocate total payoff by marginal contribution under fairness axioms and thus provide a principled bridge from sparse outcome rewards to step-level supervision. However, classical Shapley assumes unordered and exchangeable players, while reasoning steps are temporally ordered and causally dependent. Under strict temporal constraints, naively applying classical Shapley degenerates into prefix value differences along the original sequence, which remains sensitive to value-estimation noise and misses non-local interactions.
+This challenge motivates a different question:
+can step-level credit be derived from the trajectory data itself, without
+relying on external judges?
+A multi-step reasoning trajectory that jointly yields a final reward naturally
+resembles a cooperative game with a shared payoff.
+This analogy points to Shapley values, which allocate total payoff by marginal
+contribution under a principled fairness criterion.
+From this perspective, Shapley-style attribution offers an appealing bridge
+from sparse outcome rewards to dense process supervision.
+However, reasoning trajectories differ fundamentally from the classical
+Shapley setting.
+Reasoning steps are temporally ordered, causally dependent, and not freely
+exchangeable.
+Under strict temporal constraints, naively applying classical Shapley can
+degenerate into prefix-wise value differences along the original sequence,
+which is sensitive to value-estimation noise and fails to capture non-local
+interactions across steps.
+Therefore, the key design problem is not merely to adopt Shapley values, but
+to adapt their fairness intuition to ordered, causally constrained reasoning
+processes.
 
-This motivates a concrete design goal: preserve the fairness intuition of Shapley while adapting attribution to ordered, causally constrained trajectories. Motivated by this goal, we propose \textbf{SPRM} (\textbf{S}hapley-value based \textbf{P}rocess \textbf{R}eward \textbf{M}odel), a framework that automatically constructs trainable step-level supervision from outcome-only signals. Our central idea is to treat a reasoning trajectory as an ordered, causally constrained cooperative process, and to decompose the final reward in a structured Shapley-inspired manner rather than relying on external step annotations. Concretely, we first learn a differentiable proxy of final value, then combine Aumann--Shapley-style gradient attribution with discrete counterfactual ablation to obtain instance-level local causal contributions. In parallel, we extract distribution-level global priors from semantic-neighbor statistics across trajectories. These two signals are jointly distilled into a shared PRM backbone through a dual-head objective, balancing local causality and global stability.
+Motivated by this goal, we propose \textbf{SPRM}
+(\textbf{S}hapley-value based \textbf{P}rocess \textbf{R}eward
+\textbf{M}odel), a framework that automatically constructs trainable
+step-level supervision from outcome-only signals.
+Our central idea is to treat a reasoning trajectory as an ordered cooperative
+process and to decompose its final reward into structured step-level credit
+without external annotation.
+Concretely, we first learn a differentiable proxy of final trajectory value.
+We then estimate instance-level local credit by combining discrete
+counterfactual ablation with a path-integrated attribution mechanism inspired
+by Aumann--Shapley, which measures how each step changes the predicted final
+value under an ordered relaxation of the trajectory.
+This continuous attribution is especially useful in our setting because it is
+compatible with differentiable value models and provides a principled way to
+approximate ordered marginal contributions beyond a single hard ablation.
+In parallel, we estimate distribution-level global priors from semantic
+neighbor statistics across trajectories, capturing whether a step tends to be
+intrinsically useful beyond one specific rollout.
+These local and global signals are jointly distilled into a shared PRM
+backbone through a dual-head objective, balancing causal specificity with
+cross-trajectory stability.
 
-\todo{This paragraph needs to response to the problem mentioned before. How does SPRM address the problem? What are the advantages of SPRM over the existing methods?}Building on the above formulation, SPRM is designed with three core properties. \textbf{First}, it requires no human step annotations or external judges, and derives supervision directly from sparse outcome signals. \textbf{Second}, it jointly models two complementary aspects of step quality: causal contribution to final success (local counterfactual effect) and intrinsic step value estimated from cross-trajectory semantics (global prior). \textbf{Third}, it grounds credit assignment in a Shapley-theoretic fair allocation principle adapted to ordered, causally constrained reasoning trajectories. Together, these properties provide a more coherent balance of automation, reliability, and scalability.
+This design directly addresses the limitations of existing PRM supervision
+pipelines.
+Unlike annotation-based or judge-based approaches, SPRM derives supervision
+directly from sparse outcome signals and therefore removes the need for human
+step labels or external evaluators.
+Unlike purely local counterfactual scoring, it combines local causal
+attribution with global semantic priors, making the resulting labels more
+stable and less sensitive to noise in any single trajectory.
+Unlike outcome-level RL alone, SPRM produces reusable step-level reward
+signals that can support PRM training, reranking, and test-time reasoning.
+Overall, SPRM aims to provide a more coherent trade-off among automation,
+causal grounding, and scalability for process supervision in LLM reasoning.
 
 Our main contributions are summarized as follows:
 
 \begin{itemize}
-    \item We propose a high-quality automatic labeling method for the sparse-reward problem in LLM reasoning, converting outcome-only supervision into trainable step-level reward signals without manual annotation.
-    \item We revisit step credit assignment from a cooperative-game perspective, and introduce a Shapley-based fairness principle for reward decomposition under temporal and causal constraints.
-    \item We present an end-to-end SPRM training framework that unifies local causal attribution and global intrinsic-value estimation, and provide comprehensive analyses and experiments on ProcessBench and PRMBench.
+    \item We propose an annotation-free automatic labeling framework that
+    converts outcome-only rewards in LLM reasoning into trainable step-level
+    supervision, without relying on human annotation or external judges.
+    \item We revisit step credit assignment from a cooperative-game
+    perspective, and introduce a Shapley-inspired attribution principle
+    tailored to temporally ordered and causally constrained reasoning
+    trajectories.
+    \item We present an end-to-end SPRM training framework that unifies local
+    causal attribution and global intrinsic-value estimation, and validate its
+    effectiveness through comprehensive analyses and experiments on
+    ProcessBench and PRMBench.
 \end{itemize}
-
-\todo{cue GRPO,why don't we use it directly?}
-\todo{For introducing Aumann-Shapley attribution, we need to claim clearly why we use it and why it is the best way to solve the problem? Considering not so many people know about this attribution method, we need to explain it in a way that is easy to understand.}
