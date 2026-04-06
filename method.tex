@@ -1,7 +1,8 @@
+\todo{The logical relationships between the various subsections, including their inputs and outputs, all need to be connected; otherwise, it will be incomprehensible.}
 \section{Method}
-We consider a dataset of multi-step reasoning trajectories,
+We consider a dataset of multi-step reasoning trajectories, \todo{Arguing appropriately that I don't need to collect that much data, and that I don't need that much rollout (as in Movie Maker).}
 $\mathcal{D}=\{(\tau_i,r_i)\}_{i=1}^{N}$, where each trajectory is
-$\tau_i=(question,s_{i,1},\ldots,s_{i,T_i})$ and the final outcome reward is
+$\tau_i=(question,s_{i,1},\ldots,s_{i,T_i})$ \todo{The question is replaced with a symbol, and s seems to be undefined.} and the final outcome reward is
 $r_i\in[0,1]$. Our goal is to transform sparse outcome supervision into
 step-level supervision, and distill it into a large model such that, at each
 step boundary, it can predict both the prior contribution of a
@@ -12,17 +13,19 @@ Our framework consists of three stages: learning a differentiable final-value
 proxy, constructing step-level supervision signals, and training the process
 reward model.
 
+\todo{I don't quite understand the relationship between this subsection and what I'm supposed to do.}
 \subsection{Stage1: Learning Differentiable Final Reward Scorer}
 \label{stage1}
 To enable gradient-based Shapley approximation at the step level, we first
 train a differentiable trajectory-level scorer
-$F: X \xrightarrow{} \mathbb{R}$ to approximate the final reward $r$. We
+$F: X \xrightarrow{} \mathbb{R}$ \todo{The definitions of all symbols must be clearly explained!} to approximate the final reward $r$. We
 represent each trajectory as $X_i=[x_{i,0},\ldots,x_{i,T_i}]$, where
 $x_{i,t}\in\mathbb{R}^{d'}$ is the feature of step $t$. (Step-feature
 selection is discussed in \ref{step_features_selection}.) The scorer outputs
 $\hat{r} = F(X_i) \in \mathbb{R}$. We train $F$ with outcome supervision,
 e.g., using binary cross-entropy:
 
+\todo{It's recommended to avoid directly writing the loss function. Instead, consider writing the optimization objective, preferably in a different form, such as using parameters theta as argmax, argmin, or similar optimization objectives.}
 \begin{equation}
 \label{stage1_loss}
     \mathcal{L}_{stage1} = - \big[ r \log(\hat{r}) + (1-r) \log(1-\hat{r}) \big]
@@ -38,6 +41,7 @@ experience prior $\delta_{\text{global}}(s_{i,t})$, and an instance-level
 local causal contribution $\delta_{\text{local}}^{\text{IG}}(s_{i,t})$. Both are derived
 from ordered-Shapley marginal contributions.
 
+\todo{It is necessary to clarify some of the terminology used in the original text of gradient integrals; it is best not to use them directly.}
 \paragraph{Local Causal Shapley Attribution}
 For a trajectory $\tau_i$, we treat each step feature $x_{i,t}$ as one player,
 so $X_i$ can be viewed as the coalition of all players. We use integrated
@@ -49,6 +53,7 @@ trajectory such that $F(X_i^{\text{baseline}})\approx 0.5$ (e.g., an all-zero
 vector; baseline choices are discussed in
 \ref{ig_baseline_selection}). The step-level IG attribution can be written in
 a single form as:
+\todo{Definition and explanation of the meaning of symbols, subscripts, etc.}
 \begin{equation}
 \label{ig_for_step}
     \delta_{\text{local}}^{\text{IG}}(s_{i,t})
@@ -64,7 +69,7 @@ contribution by completeness.
 This gives a continuous Aumann--Shapley estimate, but aggregating
 dimension-level gradients can introduce semantic noise and blur key reasoning
 steps. We therefore introduce a discrete counterfactual ablation term
-$R_{\text{causal}}$ to filter noisy IG signals. Unlike pure temporal value
+$R^{\text{causal}}$ to filter noisy IG signals. Unlike pure temporal value
 differences, this term measures the outcome change after masking the current
 step while keeping the rest of the trajectory (including future steps):
 \begin{equation}
