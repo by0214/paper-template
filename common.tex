@@ -11,15 +11,6 @@
 \usepackage{amsmath}
 \usepackage{graphicx}
 % \usepackage{CJKutf8}
-\makeatletter
-\@ifundefined{tikzexternalrealjob}{%
-  \usepackage[colorinlistoftodos]{todonotes}%
-}{%
-  % Disable todo notes inside tikz externalization sub-runs to avoid
-  % recursive tikz compilation while preserving notes in the main document.
-  \usepackage[disable,colorinlistoftodos]{todonotes}%
-}
-\makeatother
 \usepackage{subcaption}
 \usepackage{multirow}
 \usepackage{mathtools,bm,amssymb}
@@ -47,7 +38,8 @@
 
 % notes
 \newcommand{\fixme}{\marginpar{FIXME}}
-% \newcommand{\todo}{\marginpar{TODO}}
+\newcommand{\todo}[2][]{%
+    \marginpar{\raggedright\footnotesize\color{red} TODO: #2}}
 % \newcommand{\rebuttal}[1]{{\color{blue}{#1}}}
 \newcommand{\revise}[1]{{\color{blue}{#1}}}
 
