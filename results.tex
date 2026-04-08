@@ -153,8 +153,9 @@ batch size 32.
 \begin{table*}[t!]
 \centering
 \small
-\setlength{\tabcolsep}{3.5pt}
+\setlength{\tabcolsep}{3.0pt}
 \renewcommand{\arraystretch}{1.1}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
 \caption{ProcessBench results.
 \(\Delta\) reports the aggregate-score difference
 \(\mathrm{Avg\_F1}(\mathrm{SPRM})-\mathrm{Avg\_F1}(\mathrm{model})\).
@@ -163,7 +164,7 @@ Data for models marked with an asterisk (\(*\)) are sourced from
 \citep{zhang-etal-2025-lessons}.}
 \label{tab:processbench_res}
 \resizebox{0.97\textwidth}{!}{%
-\begin{tabular}{llcccccccccccccc}
+\begin{tabular}{ll*{12}{C{2.9em}}C{4.3em}C{3.0em}}
 \toprule
 \multirow{2}{*}{\textbf{Type}} & \multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{GSM8K}} & \multicolumn{3}{c}{\textbf{MATH}} & \multicolumn{3}{c}{\textbf{OLYMPIADBENCH}} & \multicolumn{3}{c}{\textbf{OMNIMATH}} & \multirow{2}{*}{\textbf{Avg\_F1}} & \multirow{2}{*}{\(\mathbf{\Delta}\)} \\
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
@@ -232,22 +233,24 @@ Data for models marked with an asterisk (\(*\)) are sourced from
 }
 \end{table*}
 
-\paragraph{Long-horizon reasoning benefits most on ProcessBench.}
-SPRM's clearest strength on ProcessBench is robust error localization in
-long-horizon reasoning.
-It achieves an average F1 of 60.0, with the most pronounced gains on
-OLYMPIADBENCH and OMNIMATH, where F1 reaches 53.2 and 53.8.
-This is the regime we care about most: as reasoning chains grow longer,
-delayed outcome rewards make early-step credit assignment increasingly
-ambiguous, and simple label broadcasting becomes less reliable.
-SPRM remains strong precisely in this setting, which suggests that its local
-attribution head identifies where a trajectory begins to go wrong, while the
-global semantic prior stabilizes those signals across long chains.
-This pattern is also notable given the training setup in
-Table~\ref{tab:baseline_supervision_compare}: SPRM is built from Math-Shepherd
-rollouts without using the provided intermediate labels, yet it still compares
-favorably with baselines trained from explicit human or MC-derived process
-supervision.
+\paragraph{ProcessBench mainly highlights more robust step discrimination.}
+The clearest pattern on ProcessBench is that SPRM achieves the best average F1
+among PRMs through more robust step discrimination, maintaining a stronger
+trade-off between \textit{Err} and \textit{Cor} instead of over-optimizing only
+one side.
+It reaches 60.0 average F1, with especially clear gains on OLYMPIADBENCH and
+OMNIMATH, where F1 rises to 53.2 and 53.8.
+This directly matches the design goal of SPRM:
+the local attribution head is intended to identify where a trajectory starts to
+go wrong, while the global semantic prior suppresses superficially plausible
+but semantically unreliable patterns that would otherwise distort step credit.
+This interpretation is also reflected in the baseline comparison.
+Compared with Qwen2.5-Math-7B-PRM800K, which is trained with curated human
+process labels, SPRM gives up some \textit{Cor} on the harder sets but gains
+substantially on \textit{Err}, yielding a better overall F1.
+Compared with OVM-Qwen3-4B, which derives labels by broadcasting final rewards,
+the gap is much larger on \textit{Err}, suggesting that outcome broadcasting
+alone is insufficient for precise error localization.
 
 \paragraph{PRMBench highlights cleaner reasoning preferences and stronger reaction to degraded steps.}
 PRMBench highlights a different advantage of SPRM: it prefers cleaner
