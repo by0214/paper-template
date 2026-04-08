@@ -27,6 +27,36 @@ reasoning pattern whose value may be estimated from how similar patterns
 behave across many trajectories.
 This view motivates us to construct two supervision signals, a local one and a
 global one, and then distill them into a unified process reward model.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/overview.drawio.pdf}
+\caption{Overview of SPRM.
+Starting from outcome-only reasoning trajectories, we first encode the
+question and each reasoning step into boundary representations.
+We then construct two complementary supervision signals: a local signal from a
+trajectory-level value proxy via Aumann--Shapley attribution and
+counterfactual consistency checking, and a global signal from semantic
+neighbor statistics across trajectories.
+Both signals are finally distilled into a dual-head process reward model,
+whose predictions are combined at inference time to produce the final
+step-level reward.}
+\label{fig:sprm_overview}
+\end{figure*}
+
+Figure~\ref{fig:sprm_overview} summarizes the full pipeline.
+The framework proceeds in three stages.
+First, a trajectory-level scorer learns to predict the final outcome reward
+from the whole reasoning chain and serves as a differentiable proxy for
+credit assignment.
+Second, this scorer is used to derive local step credit, while the training
+corpus is also queried to estimate a global prior for semantically similar
+steps.
+Third, these two sources of supervision are distilled into a shared PRM
+backbone with separate local and global heads, so that the final reward model
+inherits both trajectory-specific causal evidence and cross-trajectory
+stability.
+
 To make this view operational, we insert a special boundary token
 \(\langle\texttt{ST\_END}\rangle\) after the question and after every
 reasoning step, and use the final-layer hidden state at each boundary position
