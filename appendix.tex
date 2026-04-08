@@ -55,9 +55,17 @@ illustrates an erroneous trajectory where a critical mistake occurs at Step 1. A
 
 \subsection{IG Baseline Selection}
 \label{ig_baseline_selection}
-To choose the IG baseline, we consider two options: (i) using the first-order forward-difference feature vector $x_{i,t-1}$ as the baseline for the current step, and (ii) using randomly initialized vectors as semantically empty baselines.
+To choose the IG baseline, we consider two options: (i) using the first-order
+forward-difference feature vector $x_{i,t-1}$ as the baseline for the current
+step, and (ii) using randomly initialized vectors as semantically empty
+baselines.
 
-The motivation for option (i) is to capture incremental step contribution. In this case, for input $X_i=[x_{i,0},\ldots,x_{i,T_i}]$, the baseline sequence is $X_{i}^{baseline}=[x_{i,-1}, x_{i, 0}, \ldots,x_{i,T_i-1}]$, where $x_{i, -1}$ denotes a manually defined $question\_end$ baseline interpreted as a non-semantic vector. IG completeness then gives:
+The motivation for option (i) is to capture incremental step contribution.
+In this case, for input $X_i=[x_{i,0},\ldots,x_{i,T_i}]$, the baseline sequence
+is $X_{i}^{baseline}=[x_{i,-1}, x_{i,0}, \ldots, x_{i,T_i-1}]$, where
+$x_{i,-1}$ denotes a manually defined baseline for the question-boundary state,
+interpreted as a semantically uninformative vector.
+IG completeness then gives:
 
 \begin{equation}
 \label{baseline_selection_delta}

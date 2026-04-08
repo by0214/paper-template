@@ -27,11 +27,14 @@ reasoning pattern whose value may be estimated from how similar patterns
 behave across many trajectories.
 This view motivates us to construct two supervision signals, a local one and a
 global one, and then distill them into a unified process reward model.
-To make this view operational, we represent the question and each reasoning
-step using hidden states from the LLM backbone.
-Let \(x_{i,t}\in\mathbb{R}^{d}\) denote the \(d\)-dimensional representation of
-the \(t\)-th segment in trajectory \(i\), where \(t=0\) refers to the question
-segment and \(t\in\{1,\ldots,T_i\}\) refers to reasoning steps.
+To make this view operational, we insert a special boundary token
+\(\langle\texttt{ST\_END}\rangle\) after the question and after every
+reasoning step, and use the final-layer hidden state at each boundary position
+as the representation of the immediately preceding segment.
+Let \(x_{i,t}\in\mathbb{R}^{d}\) denote the \(d\)-dimensional boundary
+representation of segment \(t\) in trajectory \(i\), where \(t=0\) refers to
+the question-boundary state and \(t\in\{1,\ldots,T_i\}\) refers to
+reasoning-step boundary states.
 We write the full trajectory representation as
 \(
 X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
@@ -222,12 +225,10 @@ provides a stable complement to the local causal signal.
 \label{stage3}
 
 The two signals above are then used to supervise the final process reward
-model at step boundaries.
-For each trajectory, we insert a special boundary token
-\(\langle\texttt{ST\_END}\rangle\) after the question and after every reasoning
-step.
-The model reads the entire sequence and outputs one reward prediction at each
-boundary position for the immediately preceding segment.
+model at the same boundary positions.
+The model reads the entire sequence with the inserted
+\(\langle\texttt{ST\_END}\rangle\) tokens and outputs one reward prediction at
+each boundary position for the immediately preceding segment.
 
 We use a shared backbone with two task-specific heads, jointly parameterized by
 \(\theta_{\mathrm{LLM}}\).
