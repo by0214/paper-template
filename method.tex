@@ -109,7 +109,8 @@ We train it from trajectory-level supervision by solving
 % \sum_{i=1}^{N}
 % \ell\!\left(F_{\theta_{\mathrm{scorer}}}(X_i),r_i\right),
 % \end{equation}
-\begin{equation}\todo{use theta* = argmin ...}
+\todo{use theta* = argmin ...}
+\begin{equation}
 \label{eq:stage1_objective}
 \mathcal{L}_{\mathrm{scorer}}(\theta_{\mathrm{scorer}})
 =
@@ -149,7 +150,8 @@ path-integrated attribution.
 \todo{reomve "For readability ... and for equation better use x as input"}For readability, we write the resulting signal as a function of the step
 \(s_{i,t}\), although it is computed from its representation \(x_{i,t}\).
 The local signal assigned to step \(s_{i,t}\) is
-\begin{equation}\todo{the equation now is factor-level, we can write it in vector level more clearly}
+\todo{the equation now is factor-level, we can write it in vector level more clearly}
+\begin{equation}
 \label{eq:delta_local}
 \delta_{\mathrm{local}}(s_{i,t})
 =
@@ -283,7 +285,8 @@ m_{i,t}
 \mathbf{1}\!\left(
 \delta_{\mathrm{local}}(s_{i,t})\cdot R_{i,t}^{\mathrm{causal}}>0
 \right),
-\)\todo{better write it as equation because people cannot notice where R^{causal} go}
+\)
+\todo{better write it as equation because people cannot notice where R^{causal} go}
 and skip the local loss whenever \(m_{i,t}=0\).
 In this way, local supervision is used only when both views agree on the
 direction of the step's effect.
