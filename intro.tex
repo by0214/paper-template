@@ -46,7 +46,8 @@ However, reasoning trajectories differ fundamentally from the classical
 Shapley setting.
 Reasoning steps are temporally ordered, causally dependent, and not freely
 exchangeable.
-Under strict temporal constraints, naively applying classical Shapley can
+Under strict temporal constraints\todo{Should it be explicitly stated here that this is a causal constraint? Is the use of "temporal" correct?}, 
+naively applying classical Shapley can
 degenerate into prefix-wise value differences along the original sequence,
 which is sensitive to value-estimation noise and fails to capture non-local
 interactions across steps.
@@ -65,7 +66,7 @@ Concretely, we first learn a differentiable proxy of final trajectory value.
 We then estimate instance-level local credit by combining discrete
 counterfactual ablation with a path-integrated attribution mechanism inspired
 by Aumann--Shapley, which measures how each step changes the predicted final
-value under an ordered relaxation of the trajectory.
+value under an ordered relaxation\todo{This part wasn't explained clearly.} of the trajectory.
 This continuous attribution is especially useful in our setting because it is
 compatible with differentiable value models and provides a principled way to
 approximate ordered marginal contributions beyond a single hard ablation.
@@ -78,7 +79,7 @@ cross-trajectory stability.
 
 This design directly addresses the limitations of existing PRM supervision
 pipelines.
-Unlike annotation-based or judge-based approaches, SPRM derives supervision
+Unlike annotation-based or judge-based approaches\todo{add cite}, SPRM derives supervision
 directly from sparse outcome signals and therefore removes the need for human
 step labels or external evaluators.
 Unlike purely local counterfactual scoring, it combines local causal

@@ -1,4 +1,4 @@
-\section{Method}
+\section{Method}\todo{The entire section lacks readability.}
 
 We aim to learn step-level process supervision from reasoning trajectories that
 only come with final outcome rewards.
@@ -11,7 +11,7 @@ be a dataset of trajectories, where
 \tau_i=(q_i,s_{i,1},\ldots,s_{i,T_i})
 \)
 contains a question \(q_i\), a sequence of reasoning steps
-\(s_{i,1},\ldots,s_{i,T_i}\), and a final reward \(r_i\in[0,1]\).
+\(s_{i,1},\ldots,s_{i,T_i}\), and a final reward \(r_i\in[0,1]\).\todo{This can be moved to Section 3.1; here, serving as the introduction to the methodology, we should first clearly outline the high-level logic.}
 Our goal is to transform this sparse trajectory-level signal into trainable
 step-level supervision for process reward modeling, without requiring external
 step annotations, per-step Monte Carlo rollouts, or judge models at labeling
@@ -63,14 +63,14 @@ reasoning step, and use the final-layer hidden state at each boundary position
 as the representation of the immediately preceding segment.
 Let \(x_{i,t}\in\mathbb{R}^{d}\) denote the \(d\)-dimensional boundary
 representation of segment \(t\) in trajectory \(i\), where \(t=0\) refers to
-the question-boundary state and \(t\in\{1,\ldots,T_i\}\) refers to
+the question-boundary state and \(t\in\{1,\ldots,T_i\}\)\todo{remove this explaination,t is metioned before} refers to
 reasoning-step boundary states.
 We write the full trajectory representation as
 \(
 X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
 \),
 and use \(x_{i,t,j}\) to denote the \(j\)-th dimension of \(x_{i,t}\).
-Implementation details of the encoder are deferred to the appendix.
+Implementation details of the encoder\todo{what is encoder? How tau transform into x?} are deferred to the appendix.
 
 \subsection{Constructing Step-Level Supervision}
 \label{stage2}
@@ -86,7 +86,7 @@ at different levels: the local signal uses differentiable step-level
 attribution, while the global signal estimates the marginal value of semantic
 patterns from cross-trajectory statistics.
 
-\subsubsection{Learning a Trajectory-Level Value Proxy for Local Attribution}
+\subsubsection{Learning a Trajectory-Level Value Proxy for Local Attribution}\todo{It didn't clearly explain how the training was conducted.}
 \label{stage1}
 
 The local signal requires a scorer that can evaluate a step in the context of
@@ -109,7 +109,7 @@ We train it from trajectory-level supervision by solving
 % \sum_{i=1}^{N}
 % \ell\!\left(F_{\theta_{\mathrm{scorer}}}(X_i),r_i\right),
 % \end{equation}
-\begin{equation}
+\begin{equation}\todo{use theta* = argmin ...}
 \label{eq:stage1_objective}
 \mathcal{L}_{\mathrm{scorer}}(\theta_{\mathrm{scorer}})
 =
@@ -135,7 +135,7 @@ A key ingredient in this construction is a baseline representation: a
 semantically uninformative reference that should not systematically bias the
 prediction toward success or failure.
 In our setting, let \(b\in\mathbb{R}^{d}\) be such a baseline representation and define
-\(X_i^{\mathrm{base}}=[b,b,\ldots,b]\).
+\(X_i^{\mathrm{base}}=[b,b,\ldots,b]\).\todo{use B instead of X_i^{\mathrm{base}}
 This baseline removes the semantic content of all segments, including the
 question segment, so that attribution is computed with respect to the full
 reasoning context.
@@ -146,10 +146,10 @@ We then consider the interpolation path
 for \(\alpha\in[0,1]\).
 Accumulating the marginal effect of the current step along this path yields a
 path-integrated attribution.
-For readability, we write the resulting signal as a function of the step
+\todo{reomve "For readability ... and for equation better use x as input"}For readability, we write the resulting signal as a function of the step
 \(s_{i,t}\), although it is computed from its representation \(x_{i,t}\).
 The local signal assigned to step \(s_{i,t}\) is
-\begin{equation}
+\begin{equation}\todo{the equation now is factor-level, we can write it in vector level more clearly}
 \label{eq:delta_local}
 \delta_{\mathrm{local}}(s_{i,t})
 =
@@ -171,7 +171,7 @@ decomposition of local credit, it is still computed at the representation
 dimension level.
 As a result, the attribution mass can be dispersed across many dimensions,
 which may blur step-level causal structure or become unstable along the
-integration path.
+integration path.\todo{Do not dismiss previous findings too readily; assertions that are overly strong require experimental corroboration—otherwise, the phrasing should be toned down.}
 To recover a more explicit step-level causal view, we introduce a discrete
 counterfactual ablation score and use it as an auxiliary consistency signal.
 Let \(X_i^{(-t)}\) denote the trajectory obtained by replacing only the current
@@ -283,7 +283,7 @@ m_{i,t}
 \mathbf{1}\!\left(
 \delta_{\mathrm{local}}(s_{i,t})\cdot R_{i,t}^{\mathrm{causal}}>0
 \right),
-\)
+\)\todo{better write it as equation because people cannot notice where R^{causal} go}
 and skip the local loss whenever \(m_{i,t}=0\).
 In this way, local supervision is used only when both views agree on the
 direction of the step's effect.
