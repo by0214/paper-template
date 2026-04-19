@@ -46,7 +46,7 @@ However, reasoning trajectories differ fundamentally from the classical
 Shapley setting.
 Reasoning steps are temporally ordered, causally dependent, and not freely
 exchangeable.
-Under strict temporal constraints\todo{Should it be explicitly stated here that this is a causal constraint? Is the use of "temporal" correct?}, 
+Under strict causal constraints,
 naively applying classical Shapley can
 degenerate into prefix-wise value differences along the original sequence,
 which is sensitive to value-estimation noise and fails to capture non-local
@@ -62,11 +62,12 @@ step-level supervision from outcome-only signals.
 Our central idea is to treat a reasoning trajectory as an ordered cooperative
 process and to decompose its final reward into structured step-level credit
 without external annotation.
-Concretely, we first learn a differentiable proxy of final trajectory value.
-We then estimate instance-level local credit by combining discrete
-counterfactual ablation with a path-integrated attribution mechanism inspired
-by Aumann--Shapley, which measures how each step changes the predicted final
-value under an ordered relaxation\todo{This part wasn't explained clearly.} of the trajectory.
+Concretely, we first learn a differentiable scorer that predicts the final trajectory reward 
+from the whole reasoning chain.
+We then estimate instance-level local credit with a path-integrated
+attribution mechanism inspired by Aumann--Shapley, and use a
+pairwise-enhanced counterfactual signal as a consistency check for
+dependency-aware step credit.
 This continuous attribution is especially useful in our setting because it is
 compatible with differentiable value models and provides a principled way to
 approximate ordered marginal contributions beyond a single hard ablation.
@@ -79,7 +80,7 @@ cross-trajectory stability.
 
 This design directly addresses the limitations of existing PRM supervision
 pipelines.
-Unlike annotation-based or judge-based approaches\todo{add cite}, SPRM derives supervision
+Unlike annotation-based\cite{uesato2022solving,lightman2023lets} or judge-based approaches\cite{versaprm, duan2025efficient,yang2025beyond,wang2025athena,cao2025dreamprm}, SPRM derives supervision
 directly from sparse outcome signals and therefore removes the need for human
 step labels or external evaluators.
 Unlike purely local counterfactual scoring, it combines local causal
@@ -103,5 +104,5 @@ Our main contributions are summarized as follows:
     \item We present an end-to-end SPRM training framework that unifies local
     causal attribution and global intrinsic-value estimation, and validate its
     effectiveness through comprehensive analyses and experiments on
-    ProcessBench and PRMBench.
+    ProcessBench, PRMBench and Best-of-\(N\) benchmarks.
 \end{itemize}

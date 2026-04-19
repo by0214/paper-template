@@ -1,32 +1,13 @@
-\section{Method}\todo{The entire section lacks readability.}
+\section{Method}
 
-We aim to learn step-level process supervision from reasoning trajectories that
-only come with final outcome rewards.
-Formally, let
-\(
-\mathcal{D}=\{(\tau_i,r_i)\}_{i=1}^{N}
-\)
-be a dataset of trajectories, where
-\(
-\tau_i=(q_i,s_{i,1},\ldots,s_{i,T_i})
-\)
-contains a question \(q_i\), a sequence of reasoning steps
-\(s_{i,1},\ldots,s_{i,T_i}\), and a final reward \(r_i\in[0,1]\).\todo{This can be moved to Section 3.1; here, serving as the introduction to the methodology, we should first clearly outline the high-level logic.}
-Our goal is to transform this sparse trajectory-level signal into trainable
-step-level supervision for process reward modeling, without requiring external
-step annotations, per-step Monte Carlo rollouts, or judge models at labeling
-time.
-
-The central design question is how to assess the quality of an individual
-reasoning step when only the final outcome is observed.
-In our view, step quality has two complementary aspects.
-One is contextual: a step should be judged by the role it plays in the
-specific trajectory where it appears.
-The other is intrinsic: beyond any single context, a step also reflects a
-reasoning pattern whose value may be estimated from how similar patterns
-behave across many trajectories.
-This view motivates us to construct two supervision signals, a local one and a
-global one, and then distill them into a unified process reward model.
+SPRM converts outcome-only trajectory rewards into trainable step-level
+supervision by separating two questions that are often conflated:
+how much a step helps the current trajectory, and how valuable the underlying
+reasoning pattern is across trajectories.
+We instantiate the first question with a local credit signal derived from a
+trajectory-level value scorer, and the second with a global semantic prior
+estimated from the training corpus.
+These two signals are then distilled into a dual-head process reward model.
 
 \begin{figure*}[t]
 \centering
@@ -44,72 +25,111 @@ step-level reward.}
 \label{fig:sprm_overview}
 \end{figure*}
 
-Figure~\ref{fig:sprm_overview} summarizes the full pipeline.
-The framework proceeds in three stages.
-First, a trajectory-level scorer learns to predict the final outcome reward
-from the whole reasoning chain and serves as a differentiable proxy for
-credit assignment.
-Second, this scorer is used to derive local step credit, while the training
-corpus is also queried to estimate a global prior for semantically similar
-steps.
-Third, these two sources of supervision are distilled into a shared PRM
-backbone with separate local and global heads, so that the final reward model
-inherits both trajectory-specific causal evidence and cross-trajectory
-stability.
+\subsection{Problem Setup and Overview}
 
-To make this view operational, we insert a special boundary token
+Let
+\(
+\mathcal{D}=\{(\tau_i,r_i)\}_{i=1}^{N}
+\)
+be a dataset of reasoning trajectories, where
+\(
+\tau_i=(q_i,s_{i,1},\ldots,s_{i,T_i})
+\)
+contains a question \(q_i\), a sequence of reasoning steps
+\(s_{i,1},\ldots,s_{i,T_i}\), and a final reward \(r_i\in[0,1]\).
+Our goal is to transform this sparse trajectory-level signal into step-level
+supervision for process reward modeling, without human step annotation,
+per-step rollouts, or external judges at labeling time.
+
+To represent each segment in a unified way, we insert a special boundary token
 \(\langle\texttt{ST\_END}\rangle\) after the question and after every
 reasoning step, and use the final-layer hidden state at each boundary position
 as the representation of the immediately preceding segment.
-Let \(x_{i,t}\in\mathbb{R}^{d}\) denote the \(d\)-dimensional boundary
-representation of segment \(t\) in trajectory \(i\), where \(t=0\) refers to
-the question-boundary state and \(t\in\{1,\ldots,T_i\}\)\todo{remove this explaination,t is metioned before} refers to
-reasoning-step boundary states.
-We write the full trajectory representation as
+Let \(x_{i,t}\in\mathbb{R}^{d}\) denote the boundary representation of segment
+\(t\) in trajectory \(i\), where \(x_{i,0}\) is the question-boundary state.
+We write the full boundary sequence as
 \(
 X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
-\),
-and use \(x_{i,t,j}\) to denote the \(j\)-th dimension of \(x_{i,t}\).
-Implementation details of the encoder\todo{what is encoder? How tau transform into x?} are deferred to the appendix.
+\).
+The encoder that maps \(\tau_i\) to \(X_i\) is the same backbone used to read
+the full sequence with inserted boundary tokens; implementation details are
+deferred to the appendix.
 
-\subsection{Constructing Step-Level Supervision}
-\label{stage2}
+Figure~\ref{fig:sprm_overview} summarizes the full pipeline.
+We first train a trajectory-level scorer to predict final rewards from complete
+boundary sequences.
+This scorer provides a differentiable value surface for local credit
+assignment.
+We then construct a local supervision signal from ordered attribution and
+counterfactual consistency, and a global supervision signal from semantic
+neighbor statistics across trajectories.
+Finally, both signals are distilled into a shared PRM backbone with separate
+local and global heads.
 
-We begin by constructing the two supervision signals that instantiate the
-above view of step quality.
-The local signal asks how much the current step contributes to the predicted
-outcome of the trajectory in which it appears.
-The global signal asks whether the underlying reasoning pattern tends to be
-useful across the dataset.
-Both are inspired by the Shapley view of credit assignment, but they operate
-at different levels: the local signal uses differentiable step-level
-attribution, while the global signal estimates the marginal value of semantic
-patterns from cross-trajectory statistics.
+\subsection{Design Principle: Contextual Credit and Intrinsic Value}
 
-\subsubsection{Learning a Trajectory-Level Value Proxy for Local Attribution}\todo{It didn't clearly explain how the training was conducted.}
-\label{stage1}
+The design of SPRM starts from a basic decomposition of step quality.
+A reasoning step has a \emph{contextual contribution}, namely whether it
+promotes or suppresses success in the specific trajectory where it appears, and
+an \emph{intrinsic value}, namely whether the underlying reasoning pattern
+tends to be useful across trajectories.
+These two notions should not be conflated:
+a helpful step can appear inside a failed trajectory, while a flawed step can
+be locally masked inside a successful one.
+SPRM therefore constructs two supervision signals that target these two
+quantities separately.
 
-The local signal requires a scorer that can evaluate a step in the context of
-the entire reasoning chain.
-Because the observed reward is only defined for a complete trajectory, we
-first learn a differentiable scorer
-\(F_{\theta_{\mathrm{scorer}}}\) over full trajectories.
-Its role is to provide a global view of the reasoning process and capture how
-different steps jointly affect the final result, so that local attribution is
-performed against the full context rather than isolated prefixes or heuristics.
+For local credit, temporal order is part of the target quantity.
+Given a trajectory \(\tau=(s_1,\dots,s_T)\), later steps depend on earlier
+ones, so the observed order is the only causally valid order.
+Under this constraint, the Shapley intuition reduces to an ordered marginal
+view,
+\begin{equation}
+\label{eq:ordered_shapley_method}
+\phi_t^{\mathrm{ord}}
+:=
+v_t-v_{t-1},
+\qquad
+v_t:=v(\{1,2,\dots,t\}),
+\;
+v_0:=v(\emptyset).
+\end{equation}
+Equation~\eqref{eq:ordered_shapley_method} motivates our local signal:
+it should estimate how the current step changes trajectory value under the
+observed reasoning order.
+In practice, a single discrete difference is too brittle to serve as the final
+supervision target by itself, so we use Aumann--Shapley attribution as a
+continuous relaxation of ordered credit assignment and pair it with a discrete
+counterfactual check.
 
-Given a trajectory representation \(X_i\), the scorer predicts a final value
+The global signal answers a different question.
+Its object is not a position in one trajectory, but a semantic reasoning
+pattern that may recur across many trajectories.
+For such patterns, the relevant quantity is closer to a distribution-level main
+effect than to an ordered within-trajectory marginal.
+If \(z\) denotes one semantic pattern, the ideal quantity is the main effect
+\begin{equation}
+\label{eq:global_main_effect_method}
+\phi^{\mathrm{main}}(z)
+:=
+v(\{z\})-v(\emptyset),
+\end{equation}
+which measures how useful the pattern is relative to a global baseline.
+Our global prior will be a practical approximation to this quantity using KNN
+statistics in representation space.
+
+\subsection{Local Supervision from a Trajectory-Level Value Proxy}
+
+\subsubsection{Learning a differentiable trajectory scorer}
+
+The local signal must evaluate a step in the context of the entire reasoning
+chain.
+Because the observed reward is defined only for complete trajectories, we first
+learn a differentiable scorer
+\(F_{\theta_{\mathrm{scorer}}}\) over full boundary sequences.
+Given \(X_i\), the scorer predicts a final value
 \(F_{\theta_{\mathrm{scorer}}}(X_i)\in[0,1]\).
-We train it from trajectory-level supervision by solving
-% \begin{equation}
-% \label{eq:stage1_objective}
-% \theta_{\mathrm{scorer}}^\star
-% =
-% \arg\min_{\theta_{\mathrm{scorer}}}
-% \sum_{i=1}^{N}
-% \ell\!\left(F_{\theta_{\mathrm{scorer}}}(X_i),r_i\right),
-% \end{equation}
-\todo{use theta* = argmin ...}
+We train it from trajectory-level supervision by minimizing
 \begin{equation}
 \label{eq:stage1_objective}
 \mathcal{L}_{\mathrm{scorer}}(\theta_{\mathrm{scorer}})
@@ -117,115 +137,141 @@ We train it from trajectory-level supervision by solving
 \mathbb{E}_{(\tau,r)\sim\mathcal{D}}
 \left[
 \ell\!\left(F_{\theta_{\mathrm{scorer}}}(X),r\right)
-\right]
+\right],
 \end{equation}
-
-where \(\ell(\cdot,\cdot)\) is the binary cross-entropy loss.
+where \(\ell(\cdot,\cdot)\) is binary cross-entropy.
 After training,
-\(F_{\theta_{\mathrm{scorer}}^\star}\) provides the differentiable value proxy
-used to model local step contribution.
+\(F_{\theta_{\mathrm{scorer}}^\star}\) serves as the value proxy used for local
+credit construction.
 
-\subsubsection{Local Aumann--Shapley Attribution}
+\subsubsection{Continuous local credit via Aumann--Shapley attribution}
 
-To quantify the contextual value of a step, we adopt a continuous Shapley view
-and ask how the predicted final value changes as the trajectory moves from a
-neutral reference state to the observed one.
-For differentiable models, this corresponds to Aumann--Shapley attribution,
-implemented via integrated gradients.
-A key ingredient in this construction is a baseline representation: a
-semantically uninformative reference that should not systematically bias the
-prediction toward success or failure.
-In our setting, let \(b\in\mathbb{R}^{d}\) be such a baseline representation and define
-\(X_i^{\mathrm{base}}=[b,b,\ldots,b]\).\todo{use B instead of X base}
-This baseline removes the semantic content of all segments, including the
-question segment, so that attribution is computed with respect to the full
-reasoning context.
-We then consider the interpolation path
+To quantify the contextual contribution of step \(s_{i,t}\), we measure how
+the predicted final value changes when the full trajectory moves from a neutral
+reference to the observed boundary sequence.
+Let \(b\in\mathbb{R}^{d}\) be a baseline representation and
 \(
-\gamma_i(\alpha)=X_i^{\mathrm{base}}+\alpha(X_i-X_i^{\mathrm{base}})
+B_i=[b,b,\ldots,b]
+\)
+the corresponding baseline sequence with the same length as \(X_i\).
+Using the same baseline for continuous attribution and discrete ablation keeps
+both local views in the same reference system.
+
+We consider the interpolation path
+\(
+\gamma_i(\alpha)=B_i+\alpha(X_i-B_i)
 \)
 for \(\alpha\in[0,1]\).
-Accumulating the marginal effect of the current step along this path yields a
-path-integrated attribution.
-\todo{reomve "For readability ... and for equation better use x as input"}For readability, we write the resulting signal as a function of the step
-\(s_{i,t}\), although it is computed from its representation \(x_{i,t}\).
-The local signal assigned to step \(s_{i,t}\) is
-\todo{the equation now is factor-level, we can write it in vector level more clearly}
+The local continuous credit assigned to step \(s_{i,t}\) is
 \begin{equation}
 \label{eq:delta_local}
 \delta_{\mathrm{local}}(s_{i,t})
 =
-\sum_{j=1}^{d}
-\left(x_{i,t,j}-b_j\right)
+\left(x_{i,t}-b\right)^\top
 \int_0^1
-\frac{\partial F_{\theta_{\mathrm{scorer}}^\star}(\gamma_i(\alpha))}
-{\partial x_{i,t,j}}
+\nabla_{x_{i,t}}
+F_{\theta_{\mathrm{scorer}}^\star}(\gamma_i(\alpha))
 \,d\alpha.
 \end{equation}
-Intuitively, \(\delta_{\mathrm{local}}(s_{i,t})\) measures whether the current
-step increases or decreases the predicted final reward when evaluated as part
-of the complete reasoning trajectory.
+This is the Aumann--Shapley attribution of the current step under the full
+trajectory context.
+It serves as our primary local supervision signal because it provides a smooth,
+differentiable estimate of ordered marginal credit rather than relying on a
+single hard ablation.
 
-\subsubsection{Counterfactual Consistency Check}
+\subsection{Pairwise Counterfactual Consistency for Dependency-Aware Credit}
 
-Although Aumann--Shapley attribution provides a principled continuous
-decomposition of local credit, it is still computed at the representation
-dimension level.
-As a result, the attribution mass can be dispersed across many dimensions,
-which may blur step-level causal structure or become unstable along the
-integration path.\todo{Do not dismiss previous findings too readily; assertions that are overly strong require experimental corroboration—otherwise, the phrasing should be toned down.}
-To recover a more explicit step-level causal view, we introduce a discrete
-counterfactual ablation score and use it as an auxiliary consistency signal.
-Let \(X_i^{(-t)}\) denote the trajectory obtained by replacing only the current
-step representation \(x_{i,t}\) with the baseline vector \(b\), while keeping
-all other segments unchanged.
-We define
+Continuous attribution alone does not directly encode what happens when steps
+are explicitly removed from the trajectory.
+We therefore introduce a discrete counterfactual view and use it as an
+auxiliary consistency signal.
+Importantly, this is a model-based counterfactual construction defined by the
+trained scorer and the baseline replacement operation; it is not intended to
+recover a full real-world causal graph.
+
+Let \(X_i^{(-t)}\) denote the trajectory obtained by replacing only
+\(x_{i,t}\) with the baseline \(b\), and let \(X_i^{(-t,-u)}\) denote the
+trajectory where both \(x_{i,t}\) and \(x_{i,u}\) are replaced.
+We first define the direct effect of removing step \(t\) as
+\begin{equation}
+\label{eq:r_direct}
+R_{i,t}^{\mathrm{dir}}
+=
+F_{\theta_{\mathrm{scorer}}^\star}(X_i)
+-F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t)}).
+\end{equation}
+A positive value means that deleting the current step lowers the predicted
+trajectory value, so the step is supportive under the scorer.
+
+To make this counterfactual view sensitive to local step dependencies, we also
+model pairwise interactions with nearby preceding steps.
+For \(u<t\), define
+\begin{equation}
+\label{eq:pairwise_interaction}
+I_{i,t,u}
+:=
+F_{\theta_{\mathrm{scorer}}^\star}(X_i)
+-F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t)})
+-F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-u)})
++F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t,-u)}).
+\end{equation}
+Positive \(I_{i,t,u}\) indicates that steps \(u\) and \(t\) act
+synergistically under the scorer, whereas negative values indicate redundancy
+or substitution.
+
+We restrict these interactions to a local ordered window
+\begin{equation}
+\label{eq:interaction_window}
+\mathcal{W}(t)
+:=
+\{u \mid 1 \le u < t,\; t-u \le w\},
+\end{equation}
+where \(w\) is a small window size.
+Within this window, we define non-parametric interaction weights
+\begin{equation}
+\label{eq:pairwise_gate}
+\bar g_{i,t,u}
+:=
+\frac{
+\mathbf{1}(u\in\mathcal{W}(t))\cdot \max(I_{i,t,u},0)
+}{
+\sum_{v\in\mathcal{W}(t)} \max(I_{i,t,v},0)+\epsilon
+}.
+\end{equation}
+We keep only positive interactions so that the correction term captures
+supportive step dependencies without overwhelming the direct effect.
+
+The final dependency-aware local counterfactual credit is
 \begin{equation}
 \label{eq:r_causal}
 R_{i,t}^{\mathrm{causal}}
-=
-F_{\theta_{\mathrm{scorer}}^\star}(X_i)-F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t)}).
+:=
+R_{i,t}^{\mathrm{dir}}
++\beta \sum_{u\in\mathcal{W}(t)} \bar g_{i,t,u}\, I_{i,t,u},
 \end{equation}
-If \(R_{i,t}^{\mathrm{causal}}>0\), removing the current step lowers the
-predicted final value, which suggests that the step is supportive for the
-outcome.
-In our framework, this counterfactual quantity is not used as a direct
-training label; instead, it is used later to filter local supervision targets
-that are inconsistent with the corresponding discrete perturbation.
+where \(\beta\) controls the strength of the interaction correction.
+This quantity is not used as a direct training label.
+Instead, it provides a discrete consistency check for the sign of the
+continuous local attribution in \eqref{eq:delta_local}.
 
-\subsubsection{Global Semantic Prior}
+\subsection{Global Supervision as a Semantic Main-Effect Prior}
 
-Local attribution captures how a step functions inside one particular
-trajectory, but step quality should not be determined by a single context
-alone.
-In long reasoning chains, the contribution of a step may fluctuate
-substantially with its surrounding context, even when it instantiates a
-generally helpful reasoning pattern.
-To capture this more stable aspect of step quality, we complement local credit
-with a global semantic prior estimated directly from the dataset.
+Local attribution estimates how a step functions inside one trajectory, but a
+step also instantiates a reasoning pattern whose value may persist across many
+contexts.
+We capture this second aspect with a global semantic prior estimated directly
+from the dataset.
+From the perspective of
+\eqref{eq:global_main_effect_method}, the goal is to approximate the main
+effect of the semantic pattern associated with the current step.
 
-Here the object of attribution shifts from individual steps to recurring
-reasoning patterns.
-These patterns are not specified manually.
-Instead, each pattern is induced by a neighborhood of semantically similar
-steps in the representation space: the k-nearest-neighbor (KNN) neighborhood of a step acts as a
-soft cluster that captures the shared reasoning behavior of those steps.
-From a Shapley perspective, one may view each semantic pattern as a player in
-a cooperative game whose payoff is final trajectory success.
-Its ideal value would be its average marginal contribution across different
-co-occurrence contexts.
-In practice, exact discrete Shapley computation over all pattern subsets is
-intractable at dataset scale.
-We therefore adopt a practical approximation that keeps only the main effect
-of a pattern relative to a global baseline.
-
-Concretely, for each step \(s_{i,t}\), we retrieve the top-\(M\) semantically
-nearest steps from other trajectories and use this neighborhood to estimate
-how successful the corresponding pattern tends to be.
-Let \(\mathcal{N}_M(i,t)\) denote this neighbor set, and let
-\(w_{j,\ell}\ge 0\) be the similarity-based weight assigned to neighbor
-\((j,\ell)\).
-The resulting neighborhood success estimate is
+We do not define patterns manually.
+Instead, each step induces a soft semantic neighborhood in representation
+space.
+For step \(s_{i,t}\), let \(\mathcal{N}_M(i,t)\) denote its top-\(M\)
+nearest steps from other trajectories, and let \(w_{j,\ell}\ge 0\) be the
+similarity-based weight assigned to neighbor \((j,\ell)\).
+The neighborhood success estimate is
 \[
 \hat r(s_{i,t})
 =
@@ -239,59 +285,59 @@ Comparing this quantity with the dataset-wide average reward
 \(
 \bar r=\frac{1}{N}\sum_{i=1}^{N}r_i
 \),
-we obtain the global prior
+we define the global prior
 \begin{equation}
 \label{eq:delta_global}
 \delta_{\mathrm{global}}(s_{i,t})
 =
 \hat r(s_{i,t})-\bar r.
 \end{equation}
-A positive value indicates that semantically similar steps tend to occur in
-successful trajectories more often than average, while a negative value
-suggests the opposite.
-Although this quantity is only a practical approximation rather than an exact
-Shapley value, it plays the role of a distribution-level marginal effect and
-provides a stable complement to the local causal signal.
+This quantity is a practical approximation to the main effect of the semantic
+pattern associated with \(s_{i,t}\):
+\(\hat r(s_{i,t})\) estimates how often similar patterns appear in successful
+trajectories, while \(\bar r\) serves as the null baseline.
+It therefore complements the local signal with a more stable
+distribution-level prior.
 
-\subsection{Distilling Supervision into the Process Reward Model}
-\label{stage3}
+\subsection{Distilling Local and Global Signals into the Process Reward Model}
 
-The two signals above are then used to supervise the final process reward
-model at the same boundary positions.
-The model reads the entire sequence with the inserted
-\(\langle\texttt{ST\_END}\rangle\) tokens and outputs one reward prediction at
-each boundary position for the immediately preceding segment.
-
+We use the two constructed signals to supervise a final process reward model at
+the same boundary positions.
+The model reads the sequence with inserted
+\(\langle\texttt{ST\_END}\rangle\) tokens and outputs one reward prediction per
+boundary position.
 We use a shared backbone with two task-specific heads, jointly parameterized by
 \(\theta_{\mathrm{LLM}}\).
-At the boundary corresponding to step \(s_{i,t}\), the model predicts
+At step \(s_{i,t}\), the model predicts
 \(\hat\delta_{i,t}^{\mathrm{local}}\) and
-\(\hat\delta_{i,t}^{\mathrm{global}}\), which are trained against binarized
-targets derived from the two constructed signals,
+\(\hat\delta_{i,t}^{\mathrm{global}}\), trained against binarized targets
 \(
-\bar{\delta}_{i,t}^{\mathrm{local}}=\mathbf{1}(\delta_{\mathrm{local}}(s_{i,t})>0)
+\bar{\delta}_{i,t}^{\mathrm{local}}
+=
+\mathbf{1}(\delta_{\mathrm{local}}(s_{i,t})>0)
 \)
 and
 \(
-\bar{\delta}_{i,t}^{\mathrm{global}}=\mathbf{1}(\delta_{\mathrm{global}}(s_{i,t})>0)
+\bar{\delta}_{i,t}^{\mathrm{global}}
+=
+\mathbf{1}(\delta_{\mathrm{global}}(s_{i,t})>0)
 \).
 
-For the local head, we further require consistency between the continuous
-attribution and the discrete counterfactual check.
-Specifically, we define a mask
-\(
+For the local head, we retain a step only when the continuous attribution and
+the discrete counterfactual view agree on the direction of its effect.
+We therefore define the consistency mask
+\begin{equation}
+\label{eq:local_mask}
 m_{i,t}
-=
+:=
 \mathbf{1}\!\left(
 \delta_{\mathrm{local}}(s_{i,t})\cdot R_{i,t}^{\mathrm{causal}}>0
-\right),
-\)
-\todo{better write it as equation because people cannot notice where R causal  go}
-and skip the local loss whenever \(m_{i,t}=0\).
-In this way, local supervision is used only when both views agree on the
-direction of the step's effect.
+\right).
+\end{equation}
+The local loss is applied only when \(m_{i,t}=1\), which filters out noisy
+steps where the two local views disagree.
 
-The training objective is
+The final training objective is
 \begin{equation}
 \label{eq:stage3_objective}
 \begin{split}
@@ -313,12 +359,11 @@ m_t\,
 \hat{\delta}_t^{\mathrm{global}},
 \bar{\delta}_t^{\mathrm{global}}
 \right)
-\Big]
+\Big],
 \end{split}
 \end{equation}
-The local head encourages the model to capture trajectory-specific causal
-credit, while the global head injects a more stable semantic prior gathered
-from the data distribution.
+where the local head captures trajectory-specific credit while the global head
+injects a more stable semantic prior.
 
 At inference time, we combine the two heads as
 \(
@@ -328,5 +373,5 @@ At inference time, we combine the two heads as
 +
 \lambda_{\mathrm{global}}\hat\delta_{i,t}^{\mathrm{global}}.
 \)
-The resulting score balances local causal evidence and global semantic
-regularity, and can be used as the final step-level process reward.
+The resulting score balances contextual causal evidence with
+cross-trajectory regularity and is used as the final step-level process reward.

@@ -1,9 +1,8 @@
 \section{Analysis}
 \label{sec:analysis}
 In the main text, we retain only analyses that directly support our core
-claims, namely why SPRM benefits from additive supervision components, why
-filtering is necessary for local credit assignment, and why local and global
-signals should be designed differently. Implementation-focused analyses,
+claims, namely why SPRM benefits from additive supervision components and why
+filtering is necessary for local credit assignment. Implementation-focused analyses,
 including Stage 1 model selection, input feature selection, and IG baseline
 selection, are deferred to Appendix~\ref{sec:appendix}.
 
@@ -40,8 +39,8 @@ including \(x_{i,0}\) gives the scorer a more stable anchor for the first
 credit-assignment decision.
 Second, adding \(R_{i,t}^{\mathrm{causal}}\) further stabilizes training and
 improves the balance between \textit{Err} and \textit{Cor}, which indicates
-that raw IG-based local signals contain non-trivial noise and benefit from an
-agreement check against discrete counterfactual perturbation.
+that raw IG-based local signals contain non-trivial noise and benefit from a
+dependency-aware counterfactual agreement check.
 Third, incorporating \(\delta_{\mathrm{global}}\) brings the strongest gains on
 the harder domains, especially OLYMPIADBENCH and OMNIMATH.
 Although \textit{Cor} may slightly decrease in some settings, the overall F1
@@ -85,9 +84,9 @@ The two filters, however, emphasize different notions of reliability.
 The LLM-consistency filter is more aligned with semantic agreement and can
 sharpen sensitivity-oriented indicators such as first-error localization.
 By contrast, \(R_{i,t}^{\mathrm{causal}}\) directly asks whether removing the
-current step changes the predicted trajectory value, so it is more tightly
-aligned with the contextual contribution that the local head is intended to
-capture.
+current step remains supportive after accounting for its local interactions
+with nearby preceding steps, so it is more tightly aligned with the
+contextual contribution that the local head is intended to capture.
 This leads to more stable gains on correct-path acceptance and stronger
 behavior on the harder long-horizon benchmarks.
 
@@ -96,90 +95,5 @@ This comparison clarifies why the final method uses
 The LLM-consistency filter is a useful empirical reference because it confirms
 that denoising local credit matters, but the counterfactual filter is more
 faithful to our target quantity: whether the current step helps or hurts the
-outcome of the specific trajectory in which it appears.
-
-\subsection{Why Local and Global Use Different Attribution Designs?}\todo{It feels abrupt here; I suggest removing it and condensing it into a "theory" section within the "Methods."}
-The design of SPRM starts from a simple question:
-what makes a reasoning step good or bad?
-We decompose the answer into two complementary aspects.
-One is the step's \emph{contextual contribution}, namely whether it promotes or
-suppresses success in the specific trajectory where it appears.
-The other is the step's \emph{intrinsic value}, namely whether the underlying
-reasoning pattern tends to be useful across trajectories.
-These two notions should not be conflated.
-A good step can appear inside a failed trajectory, while a flawed step can be
-locally masked inside a successful one.
-Using only one view therefore makes supervision brittle.
-
-The local signal should preserve temporal order and causal dependence.
-For a trajectory \(\tau=(s_1,\dots,s_T)\), steps are not freely exchangeable:
-later steps depend on earlier ones, and only the observed order is causally
-valid.
-Under this constraint, the classical discrete Shapley view over permutations
-collapses to an ordered marginal form:
-\begin{equation}
-\label{eq:ordered_shapley_analysis}
-\phi_t^{\mathrm{ord}}
-:=
-v_t-v_{t-1},
-\qquad
-v_t:=v(\{1,2,\dots,t\}),
-\;
-v_0:=v(\emptyset).
-\end{equation}
-
-This observation explains why the local signal should follow an ordered
-Shapley intuition instead of an unordered one.
-At the same time, the discrete difference in
-\eqref{eq:ordered_shapley_analysis} is too brittle to serve as the final local
-supervision signal by itself:
-it depends strongly on scorer calibration and captures only one hard marginal
-change.
-We therefore use Aumann--Shapley attribution through integrated gradients as a
-continuous relaxation of ordered credit assignment, and pair it with
-\(R_{i,t}^{\mathrm{causal}}\) as a discrete counterfactual check.
-The former provides a smooth local contribution estimate, while the latter
-keeps the sign aligned with explicit step removal.
-
-The global signal answers a different question, so it need not obey the same
-ordering constraint.
-Here the object of interest is no longer a position in one trajectory, but a
-semantic reasoning pattern that may recur across many trajectories.
-Let \(\mathcal{P}\) denote a set of such patterns and let \(z\in\mathcal{P}\)
-be one candidate pattern.
-Because these patterns are compared through cross-trajectory co-occurrence
-rather than within-trajectory temporal order, the classical discrete Shapley
-view becomes appropriate again:
-\begin{equation}
-\label{eq:global_shapley_analysis}
-\phi(z)
-=
-\sum_{S\subseteq\mathcal{P}\setminus\{z\}}
-\frac{|S|!\left(|\mathcal{P}|-|S|-1\right)!}{|\mathcal{P}|!}
-\bigl[v(S\cup\{z\})-v(S)\bigr].
-\end{equation}
-Equation~\eqref{eq:global_shapley_analysis} averages the marginal contribution
-of pattern \(z\) over all co-occurrence contexts \(S\).
-Its exact computation is infeasible at dataset scale, so we retain only the
-main effect relative to the global baseline:
-\begin{equation}
-\label{eq:global_main_effect_analysis}
-\phi^{\mathrm{main}}(z)
-:=
-v(\{z\})-v(\emptyset).
-\end{equation}
-Our global prior
-\(\delta_{\mathrm{global}}(s_{i,t})=\hat r(s_{i,t})-\bar r\) is precisely a
-practical approximation to this main effect:
-the KNN neighborhood estimates how successful the semantic pattern associated
-with \(s_{i,t}\) tends to be, and \(\bar r\) plays the role of the null
-baseline.
-
-In this sense, local and global are not two redundant views of the same
-quantity.
-The local signal estimates how the current step affects the present trajectory
-under temporal and causal constraints, whereas the global signal estimates the
-intrinsic value of the underlying reasoning pattern without such constraints.
-Their combination is therefore necessary: local credit provides causal
-specificity, and global value provides robustness against context-induced
-fluctuations.
+outcome of the specific trajectory in which it appears after accounting for
+its immediate step dependencies.
