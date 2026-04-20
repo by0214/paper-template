@@ -47,72 +47,56 @@ a dual-head PRM.
 \subsection{Local Step Credit from Outcome-Only Trajectories}
 \label{sec:method_local}
 
-The local branch is derived from an ordered cooperative-game view of a
-reasoning trajectory.
-For each
+We begin from a cooperative-game view of step credit assignment.
+Consider a dataset
+\(
+\mathcal{D}=\{(\tau_i,r_i)\}_{i=1}^{N}
+\),
+where
 \(
 \tau_i=(q_i,s_{i,1},\ldots,s_{i,T_i})
-\),
-we treat the reasoning steps as players
+\)
+is a reasoning trajectory and \(r_i\in\{0,1\}\) is its final reward.
+For each trajectory, the reasoning steps are treated as players
 \(
 \mathcal{N}_i=\{1,\ldots,T_i\}
-\)
-that jointly produce the binary terminal payoff \(r_i\in\{0,1\}\).
-The question is part of the trajectory context rather than a player.
-To encode this context, we insert a special boundary token
-\(\langle\texttt{ST\_END}\rangle\) after the question and after every reasoning
-step, and use an encoder with sufficient semantic capacity to map the
-trajectory into vector representations.
-In our implementation, this encoder is the backbone LLM, and we use the
-final-layer hidden state at each inserted boundary.
-Let \(x_{i,0}\in\mathbb{R}^{d}\) denote the representation at the
-\texttt{question\_end} position and \(x_{i,t}\in\mathbb{R}^{d}\) denote the
-representation of step \(s_{i,t}\) for \(t\in\{1,\ldots,T_i\}\).
-We write
-\(
-X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
 \),
-where \(x_{i,0}\) is retained during training as a contextual anchor because it
-encodes the background information of the problem before any reasoning step is
-taken.
+and a coalition \(S\subseteq\mathcal{N}_i\) is assigned value \(v_i(S)\).
+Under the classical discrete Shapley formulation, the credit of step \(t\) is
+\begin{equation}
+\label{eq:discrete_shapley}
+\phi_{i,t}^{\mathrm{sha}}
+=
+\frac{1}{T_i!}
+\sum_{\pi\in\Pi(\mathcal{N}_i)}
+\Big[
+v_i\!\big(\mathrm{Pre}_{\pi}(t)\cup\{t\}\big)
+-
+v_i\!\big(\mathrm{Pre}_{\pi}(t)\big)
+\Big],
+\end{equation}
+where \(\Pi(\mathcal{N}_i)\) is the set of all permutations of
+\(\mathcal{N}_i\), and \(\mathrm{Pre}_{\pi}(t)\) denotes the predecessors of
+step \(t\) under permutation \(\pi\).
+This quantity measures the expected marginal contribution of a step over all
+possible insertion orders \citep{shapley1953value,pmlr-v119-sundararajan20b}.
 
-To connect this representation to the Shapley framework, let
-\(b\in\mathbb{R}^{d}\) be a semantically uninformative baseline vector.
-For any coalition \(S\subseteq\mathcal{N}_i\), define \(X_i^{S}\) as the
-sequence that keeps \(x_{i,0}\) and all \(x_{i,t}\) with \(t\in S\), while
-replacing the remaining step representations with \(b\).
-
-\begin{definition}
-For trajectory \(\tau_i\), the ordered cooperative game is
-\(
-\mathcal{G}_i=(\mathcal{N}_i,v_i)
-\),
-where each player corresponds to one reasoning step and
-\(
-v_i(S)
-\)
-denotes the trajectory value assigned to coalition \(S\).
-Under temporal and causal constraints, the admissible coalitions are the prefix
-sets
+Reasoning trajectories, however, are temporally ordered and causally
+constrained, so arbitrary permutations are not admissible.
+Let
 \(
 P_{i,t}=\{1,\ldots,t\}
 \)
 for \(t\in\{0,\ldots,T_i\}\), with \(P_{i,0}=\emptyset\).
-\end{definition}
-
-This game makes precise what we mean by \emph{contextual contribution}: the
-value of a step should be measured relative to the ordered prefix in which it
-appears, rather than averaged over arbitrary permutations as in classical
-Shapley values \citep{shapley1953value,pmlr-v119-sundararajan20b}.
 
 \begin{lemma}
 \label{lem:ordered_shapley_degenerate}
-If only the causal order
+If only the observed causal order
 \(
 1\prec 2\prec \cdots \prec T_i
 \)
-is admissible, then the permutation-averaged discrete Shapley value for step
-\(t\) degenerates to the ordered value difference
+is admissible, then the discrete Shapley value in
+\Cref{eq:discrete_shapley} degenerates to
 \begin{equation}
 \phi_{i,t}^{\mathrm{ord}}
 =
@@ -120,52 +104,59 @@ v_i(P_{i,t})-v_i(P_{i,t-1}).
 \end{equation}
 \end{lemma}
 
-Lemma~\ref{lem:ordered_shapley_degenerate} shows that once permutations are
-collapsed by temporal causality, discrete Shapley credit reduces to a
-prefix-wise value difference.
-This is principled, but it is still a single hard perturbation of the value
-function.
+\textit{Proof sketch.}
+Under a strict order, \(\mathrm{Pre}_{\pi}(t)\) degenerates to
+\(P_{i,t-1}\).
+Substituting this into \Cref{eq:discrete_shapley} directly yields the value
+difference above.
 
-\begin{proposition}
-\label{prop:reward_shaping}
-Suppose the local process reward is defined only by the ordered value
-difference
+\begin{lemma}
+\label{lem:reward_shaping_invariance}
+Let \(v_i^\star(P_{i,t})\) denote the optimal trajectory value on prefix state
+\(P_{i,t}\), and define the dense step reward
 \(
-r'_{i,t}=v_i(P_{i,t})-v_i(P_{i,t-1})
-\).
-Then
-\(
-\sum_{t=1}^{T_i} r'_{i,t}=v_i(P_{i,T_i})-v_i(P_{i,0})
+\tilde r_{i,t}^\star
+=
+v_i^\star(P_{i,t})-v_i^\star(P_{i,t-1}).
 \)
-telescopes to a redistribution of the same trajectory-level signal.
-Moreover, when \(v_i(P_{i,t})\) is instantiated by a potential function over
-prefix states, \(r'_{i,t}\) is a potential-based reward shaping term and
-therefore preserves the same optimal policy as the original sparse reward
+Then a PRM trained on this value-difference reward induces the same optimal
+policy as the original sparse terminal reward.
+\end{lemma}
+
+Formal proof of \Cref{lem:reward_shaping_invariance} is deferred to
+Appendix~\ref{sec:appendix_local_credit_proofs}.
+The key observation is that \(\tilde r_{i,t}^\star\) is a potential-based
+reward shaping term over prefix states and therefore preserves the optimal
+policy under the reward-transformation theorem of
 \citep{ng1999policy}.
-\end{proposition}
 
-Proof sketches for
-\Cref{lem:ordered_shapley_degenerate,prop:reward_shaping}
-are deferred to Appendix~\ref{sec:appendix_local_credit_proofs}.
+These two lemmas explain why classical discrete Shapley is insufficient in our
+setting: once order is fixed, it collapses to a prefix-wise value difference
+that mostly redistributes the same sparse outcome reward.
 
-Proposition~\ref{prop:reward_shaping} clarifies why ordered discrete
-differences alone are insufficient as our final supervision target:
-they mainly redistribute the sparse terminal reward and do not provide richer
-process information beyond that signal.
-Our goal is therefore not to use the discrete difference directly, but to
-build a smoother and more informative local signal on top of a learned
-trajectory value function.
-
-In practice, the value function \(v_i\) is unknown and must be approximated
-from outcome-only data.
-We therefore learn a differentiable trajectory scorer
-\(F_{\theta_{\mathrm{scorer}}}:\mathbb{R}^{(T_i+1)\times d}\rightarrow[0,1]\),
-and interpret it as a learnable realization of the trajectory value function.
-Its parameters are obtained from
+To obtain a more useful local signal, we encode each trajectory into a matrix
 \(
-\mathcal{D}=\{(\tau_i,r_i)\}_{i=1}^{N}
+X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
+\in\mathbb{R}^{(T_i+1)\times d},
 \)
-by
+where \(x_{i,0}\in\mathbb{R}^{d}\) is the question-context anchor and
+\(x_{i,t}\in\mathbb{R}^{d}\) is the \(d\)-dimensional representation of step
+\(s_{i,t}\).
+These representations are produced by an encoder with sufficient semantic
+capacity; in our implementation, this encoder is the backbone LLM.
+Let \(b\in\mathbb{R}^{d}\) be a semantically uninformative baseline vector, and
+for any coalition \(S\subseteq\mathcal{N}_i\), let \(X_i^{S}\) keep
+\(x_{i,0}\) and all \(x_{i,t}\) with \(t\in S\), while replacing the remaining
+step representations with \(b\).
+
+We then learn a lightweight trajectory scorer
+\(F_{\theta_{\mathrm{scorer}}}:\mathbb{R}^{(T_i+1)\times d}\rightarrow[0,1]\)
+from scratch on \(\mathcal{D}\), and interpret it as a learnable
+approximation to \(v_i\).
+Because this scorer is used only as an internal differentiable value surrogate,
+rather than as an external evaluator, it does not import value judgments from a
+separate pretrained judge distribution.
+Its parameters are obtained by
 \begin{equation}
 \label{eq:stage1_objective}
 \theta_{\mathrm{scorer}}^\star
@@ -178,16 +169,18 @@ by
 \end{equation}
 where \(\mathrm{BCE}(\cdot,\cdot)\) denotes the binary cross-entropy loss with
 binary target \(r\in\{0,1\}\).
-After training, \(F_{\theta_{\mathrm{scorer}}^\star}\) provides a differentiable
-trajectory value estimate that serves as the practical realization of the game
-value function.
 
+After training, \(F_{\theta_{\mathrm{scorer}}^\star}\) serves as a
+differentiable trajectory value model.
 Rather than using the discrete difference from
-Lemma~\ref{lem:ordered_shapley_degenerate} as the supervision target, we use
-the differentiability of \(F_{\theta_{\mathrm{scorer}}^\star}\) to define a
-continuous Aumann--Shapley credit signal.
-Let \(b\in\mathbb{R}^{d}\) be a semantically uninformative baseline vector, and
-let \(B_i=[b,\ldots,b]\) be the corresponding baseline sequence with the same
+\Cref{lem:ordered_shapley_degenerate} directly, we define local marginal credit
+through Aumann--Shapley attribution.
+Intuitively, this attribution measures the marginal contribution of a step by
+integrating the scorer gradient along the straight-line path from a
+semantically empty baseline vector to the observed step representation, thereby
+producing continuous credit without relying on external judges and their
+associated biases.
+Let \(B_i=[b,\ldots,b]\) be the corresponding baseline sequence with the same
 shape as \(X_i\).
 The interpolation path from baseline to observation is
 \(
@@ -209,13 +202,15 @@ F_{\theta_{\mathrm{scorer}}^\star}\!\left(\gamma_i(\alpha)\right)
 \qquad
 t\in\{1,\ldots,T_i\}.
 \end{equation}
+
 This quantity measures whether the current step increases or decreases the
 predicted value of the full trajectory when evaluated in its observed context,
 without collapsing the signal to a single discrete prefix difference.
 
-Integrated gradients provide a smooth estimate of ordered local credit, but the
-signal still depends on a learned value function and can therefore be noisy.
-We complement it with a discrete pairwise counterfactual check.
+Integrated gradients provide a smooth estimate of local marginal contribution,
+but they do not explicitly capture discrete step interactions and can still be
+noisy because they depend on a learned value model.
+We therefore complement them with a pairwise counterfactual check.
 Let \(X_i^{(-t)}\) be the sequence obtained by replacing only \(x_{i,t}\) with
 the baseline vector \(b\), and let \(X_i^{(-t,-u)}\) replace both \(x_{i,t}\)
 and \(x_{i,u}\) with \(b\).
