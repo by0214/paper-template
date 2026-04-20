@@ -10,6 +10,7 @@
 \usepackage{microtype}
 \usepackage{xcolor}         % colors
 \usepackage{amsmath}
+\usepackage{amsthm}
 \usepackage{graphicx}
 % \usepackage{CJKutf8}
 \usepackage{subcaption}
@@ -108,6 +109,12 @@
 \newcommand{\tbpm}[2]{\tpm{\mathbf{#1}}{#2}}
 \newcommand{\tbgreen}[1]{\textcolor[rgb]{0,0.502,0}{#1}}
 \newcommand{\tbred}[1]{\textcolor[rgb]{0.502,0,0}{#1}}
+
+% theorem-like environments
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Proposition}[section]
 
 % macros
 \newcommand{\methodverb}{{method}}

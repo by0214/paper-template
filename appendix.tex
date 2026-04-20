@@ -1,5 +1,55 @@
 \section{Technical appendices and supplementary material}
 \label{sec:appendix}
+
+\subsection{Proof Sketches for Local Credit Lemmas}
+\label{sec:appendix_local_credit_proofs}
+
+\begin{proof}[Proof sketch of \Cref{lem:ordered_shapley_degenerate}]
+Classical Shapley values average marginal contributions over all admissible
+permutations of the player set.
+In our ordered trajectory game, temporal causality permits only one
+permutation,
+\(
+1\prec 2\prec \cdots \prec T_i
+\).
+Therefore, the averaging operation collapses to a single marginal-contribution
+term.
+For step \(t\), the predecessors in that unique ordering are exactly the prefix
+set \(P_{i,t-1}\), and adding step \(t\) produces \(P_{i,t}\).
+Hence the discrete Shapley value reduces to
+\(
+\phi_{i,t}^{\mathrm{ord}}=v_i(P_{i,t})-v_i(P_{i,t-1})
+\).
+\end{proof}
+
+\begin{proof}[Proof sketch of \Cref{prop:reward_shaping}]
+Let
+\(
+r'_{i,t}=v_i(P_{i,t})-v_i(P_{i,t-1})
+\).
+Summing over \(t\) yields a telescoping series:
+\(
+\sum_{t=1}^{T_i} r'_{i,t}=v_i(P_{i,T_i})-v_i(P_{i,0})
+\),
+so these dense rewards only redistribute the same trajectory-level signal
+across steps.
+Now let \(r_{i,t}^{\mathrm{sparse}}\) denote the original sparse reward, which
+is zero on intermediate steps and non-zero only at the terminal outcome.
+If \(v_i(P_{i,t})\) is identified with a potential function
+\(\Phi(P_{i,t})\), then the shaped reward can be written as
+\(
+r_{i,t}^{\mathrm{shape}}
+=
+r_{i,t}^{\mathrm{sparse}}
++
+\Phi(P_{i,t})-\Phi(P_{i,t-1})
+\).
+By the policy-invariance theorem of \citet{ng1999policy}, such a
+potential-based transformation preserves the set of optimal policies.
+Therefore, ordered value differences alone do not inject additional
+optimal-policy information beyond the original sparse reward.
+\end{proof}
+
 \subsection{Stage1 Model Selection}
 
 \begin{figure*}[h]

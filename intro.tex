@@ -48,8 +48,10 @@ exchangeable.
 Under strict causal constraints,
 naively applying classical Shapley can
 degenerate into prefix-wise value differences along the original sequence,
-which is sensitive to value-estimation noise and fails to capture non-local
-interactions across steps.
+which mainly redistributes the same sparse outcome signal and remains sensitive
+to value-estimation noise.
+As a result, it fails to capture non-local interactions across steps in a
+usefully dense form.
 Therefore, the key design problem is not merely to adopt Shapley values, but
 to adapt their fairness intuition to ordered, causally constrained reasoning
 processes.
@@ -71,9 +73,9 @@ attribution mechanism inspired by Aumann--Shapley with a pairwise
 counterfactual consistency check, which together measure how each step changes
 the predicted value of the trajectory.
 Because the trajectory scorer is differentiable, we can define this local
-credit through path-integrated attribution rather than a single hard ablation,
-yielding a smoother estimate of each step's effect on the predicted trajectory
-value.
+credit through path-integrated attribution rather than relying only on the
+degenerate ordered value difference, yielding a smoother estimate of each step's
+effect on the predicted trajectory value.
 In parallel, we estimate distribution-level global priors from semantic
 neighbor statistics across trajectories, capturing whether a step pattern tends
 to correlate with successful reasoning beyond one specific rollout.

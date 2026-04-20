@@ -44,6 +44,10 @@ Second, adding \(\tilde R_{i,t}\)-based filtering further stabilizes training
 and improves the balance between \textit{Err} and \textit{Cor}, which
 indicates that raw IG-based local signals contain non-trivial noise and
 benefit from an agreement check against explicit counterfactual perturbations.
+This is consistent with our theoretical view in \Cref{sec:method_local}:
+ordered discrete value differences alone mainly redistribute sparse outcome
+signals, so useful process supervision still requires smoother attribution plus
+an explicit reliability test.
 Third, incorporating \(\delta_{i,t}^{\mathrm{glo}}\) brings the strongest gains
 on the harder domains, especially OLYMPIADBENCH and OMNIMATH.
 Although \textit{Cor} may slightly decrease in some settings, the overall F1
