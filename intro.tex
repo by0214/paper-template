@@ -62,12 +62,15 @@ step-level supervision from outcome-only signals.
 Our central idea is to treat a reasoning trajectory as an ordered cooperative
 process and to decompose its final reward into structured step-level credit
 without external annotation.
-Concretely, we first learn a differentiable scorer that predicts the final trajectory reward 
-from the whole reasoning chain.
-We then estimate instance-level local credit with a path-integrated
-attribution mechanism inspired by Aumann--Shapley, and use a
-pairwise-enhanced counterfactual signal as a consistency check for
-dependency-aware step credit.
+Concretely, we first learn a trajectory-level scorer that predicts the final
+trajectory reward from the whole reasoning chain.
+This scorer serves as a differentiable trajectory value function, which turns
+sparse outcome supervision into a form on which step-level credit can be
+defined.
+We then estimate instance-level local credit by combining a path-integrated
+attribution mechanism inspired by Aumann--Shapley with a pairwise
+counterfactual consistency check, which together measure how each step changes
+the predicted value of the trajectory.
 This continuous attribution is especially useful in our setting because it is
 compatible with differentiable value models and provides a principled way to
 approximate ordered marginal contributions beyond a single hard ablation.
@@ -83,8 +86,9 @@ pipelines.
 Unlike annotation-based\cite{uesato2022solving,lightman2023lets} or judge-based approaches\cite{versaprm, duan2025efficient,yang2025beyond,wang2025athena,cao2025dreamprm}, SPRM derives supervision
 directly from sparse outcome signals and therefore removes the need for human
 step labels or external evaluators.
-Unlike purely local counterfactual scoring, it combines local causal
-attribution with global semantic priors, making the resulting labels more
+Unlike purely local counterfactual scoring, it combines continuous local credit
+with a discrete counterfactual check and global semantic priors, making the
+resulting labels more
 stable and less sensitive to noise in any single trajectory.
 Unlike outcome-level RL alone, SPRM produces reusable step-level reward
 signals that can support PRM training, reranking, and test-time reasoning.
