@@ -274,27 +274,29 @@ Its role is to provide a discrete consistency check for the sign of
 The global branch targets a different quantity: the \emph{intrinsic value} of a
 reasoning pattern across trajectories, namely whether that pattern tends to
 correlate with successful reasoning beyond a single rollout.
-A step can be locally helpful inside one trajectory yet instantiate a pattern
-that is globally unreliable, and the reverse can also happen.
+A step that is correct in itself can still appear inside an unsuccessful
+trajectory, for example when it follows a mistaken earlier conclusion and is
+therefore embedded in an incorrect reasoning chain.
+The goal of the global branch is to estimate this intrinsic step value across
+contexts, so that the reward signal becomes less sensitive to trajectory-local
+contextual variation and therefore more stable.
 For this reason, the global branch does not follow the same ordered credit
 logic as the local branch.
-From a Shapley perspective, it is closer to retaining the main effect of a
-semantic pattern relative to a dataset-level baseline.
 
 We operationalize this idea with a semantic neighborhood prior.
 For each step representation \(x_{i,t}\), we retrieve its top-\(M\) nearest
 neighbors from other trajectories and denote the resulting set by
-\(\mathcal{N}_M(i,t)\).
+\(\mathcal{H}_M(i,t)\).
 Let \(\omega_{i,t,j,\ell}\ge 0\) be the similarity-based weight assigned to
-neighbor \((j,\ell)\in\mathcal{N}_M(i,t)\).
+neighbor \((j,\ell)\in\mathcal{H}_M(i,t)\).
 The neighborhood success estimate is
 \[
 \hat r_{i,t}
 =
 \frac{
-\sum_{(j,\ell)\in\mathcal{N}_M(i,t)} \omega_{i,t,j,\ell} r_j
+\sum_{(j,\ell)\in\mathcal{H}_M(i,t)} \omega_{i,t,j,\ell} r_j
 }{
-\sum_{(j,\ell)\in\mathcal{N}_M(i,t)} \omega_{i,t,j,\ell}
+\sum_{(j,\ell)\in\mathcal{H}_M(i,t)} \omega_{i,t,j,\ell}
 }.
 \]
 Comparing this quantity with the dataset-wide average reward
@@ -308,9 +310,9 @@ we obtain the global supervision signal
 =
 \hat r_{i,t}-\bar r.
 \end{equation}
-This quantity is a practical approximation to the marginal main effect of the
-reasoning pattern represented by \(x_{i,t}\), and provides a stable complement
-to the trajectory-specific local signal.
+This quantity measures whether the semantic neighborhood of \(x_{i,t}\) is more
+or less associated with success than the dataset average, and provides a stable
+complement to the trajectory-specific local signal.
 
 \subsection{Training the PRM and Inference}
 \label{sec:method_prm}
