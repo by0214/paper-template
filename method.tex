@@ -6,10 +6,16 @@ The core difficulty is that the observed reward is defined on the full
 trajectory rather than on individual steps.
 Our solution is to construct two complementary supervision signals from the
 trajectory data itself.
-The local signal estimates the \emph{contextual contribution} of a step within
-its current trajectory, while the global signal estimates the \emph{intrinsic
-value} of the underlying reasoning pattern across trajectories.
-These signals are then distilled into a unified process reward model (PRM).
+The first is the \emph{contextual contribution} of a step, \ie whether that
+step helps or hurts the predicted outcome of the particular trajectory in which
+it appears.
+The second is the \emph{intrinsic value} of a reasoning pattern, \ie whether
+that kind of step tends to correlate with successful reasoning across
+trajectories.
+These two views capture complementary aspects of process supervision:
+one is trajectory-specific and causally grounded, while the other is
+cross-trajectory and distributional.
+SPRM distills both into a unified process reward model (PRM).
 
 \begin{figure*}[t]
 \centering
@@ -30,6 +36,32 @@ step-level reward.}
 \end{figure*}
 
 Figure~\ref{fig:sprm_overview} summarizes the full pipeline.
+
+We first learn a differentiable trajectory scorer from outcome-only rewards.
+This scorer turns sparse final outcomes into a trajectory value function on
+which contextual step credit can be defined.
+We then construct a local signal for trajectory-specific contribution and a
+global signal for cross-trajectory pattern value, and finally distill both into
+a dual-head PRM.
+
+\subsection{Local Step Credit from Outcome-Only Trajectories}
+\label{sec:method_local}
+
+The local branch targets the \emph{contextual contribution} of a reasoning
+step, namely whether the current step helps or hurts the predicted outcome of
+its observed trajectory.
+Because steps in a reasoning chain are temporally ordered and causally
+dependent, this quantity should respect the observed order rather than average
+over arbitrary permutations.
+In this sense, the local problem is closer to ordered marginal credit than to
+classical Shapley values over exchangeable players.
+At the same time, a single ordered discrete difference is too brittle to be
+used directly as supervision, because it depends on one hard perturbation of a
+learned value estimator.
+We therefore first learn a differentiable trajectory value function and then
+define continuous local credit on top of it, with an additional discrete
+counterfactual check for reliability.
+
 We consider a dataset
 \(
 \mathcal{D}=\{(\tau_i,r_i)\}_{i=1}^{N}
@@ -50,43 +82,9 @@ We write the full boundary sequence as
 \(
 X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
 \).
-The question boundary is used as a contextual anchor in trajectory scoring and
-credit assignment, while supervision targets are constructed for reasoning
-steps \(t\ge 1\).
-
-\subsection{Framework Overview}
-
-SPRM follows a three-stage pipeline.
-First, we learn a trajectory-level scorer that predicts the final outcome
-reward of the full reasoning chain.
-Its purpose is not merely to support a later attribution formula; rather, it
-turns sparse outcome supervision into a differentiable trajectory value
-function on which local credit can be defined.
-Second, we construct two step-level supervision signals from this shared
-representation space.
-The local signal asks whether the current step helps or hurts the current
-trajectory, while the global signal asks whether the underlying reasoning
-pattern tends to be useful across trajectories.
-Third, these two signals are distilled into a dual-head PRM so that the final
-reward model inherits both trajectory-specific credit and cross-trajectory
-stability.
-
-\subsection{Local Step Credit from Outcome-Only Trajectories}
-\label{sec:method_local}
-
-The local branch targets the \emph{contextual contribution} of a reasoning
-step.
-Because steps in a reasoning chain are temporally ordered and causally
-dependent, this quantity should respect the observed order rather than average
-over arbitrary permutations.
-In this sense, the local problem is closer to ordered marginal credit than to
-classical Shapley values over exchangeable players.
-At the same time, a single ordered discrete difference is too brittle to be
-used directly as supervision, because it depends on one hard perturbation of a
-learned value estimator.
-We therefore first learn a differentiable trajectory value function and then
-define continuous local credit on top of it, with an additional discrete
-counterfactual check for reliability.
+The question boundary serves as a contextual anchor in trajectory scoring and
+credit assignment, while supervision targets are constructed only for
+reasoning steps \(t\ge 1\).
 
 The first obstacle is that the observed reward is available only at the
 trajectory level.
@@ -205,7 +203,8 @@ Its role is to provide a discrete consistency check for the sign of
 \label{sec:method_global}
 
 The global branch targets a different quantity: the \emph{intrinsic value} of a
-reasoning pattern across trajectories.
+reasoning pattern across trajectories, namely whether that pattern tends to
+correlate with successful reasoning beyond a single rollout.
 A step can be locally helpful inside one trajectory yet instantiate a pattern
 that is globally unreliable, and the reverse can also happen.
 For this reason, the global branch does not follow the same ordered credit
@@ -276,17 +275,16 @@ m_{i,t}
 The PRM objective is
 \begin{equation}
 \label{eq:stage3_objective}
-\begin{aligned}
-\mathcal{L}_{\mathrm{PRM}}(\theta_{\mathrm{PRM}})
+\theta_{\mathrm{PRM}}^\star
 =
+\arg\min_{\theta_{\mathrm{PRM}}}
+\begin{aligned}
 \mathbb{E}_{(\tau_i,r_i)\sim\mathcal{D}}
 \Big[
-&\lambda_{\mathrm{loc}}
-\sum_{t=1}^{T_i}
+&\sum_{t=1}^{T_i}
 m_{i,t}\,
 \mathrm{BCE}\!\left(\hat y_{i,t}^{\mathrm{loc}}, y_{i,t}^{\mathrm{loc}}\right) \\
 &+
-\lambda_{\mathrm{glo}}
 \sum_{t=1}^{T_i}
 \mathrm{BCE}\!\left(\hat y_{i,t}^{\mathrm{glo}}, y_{i,t}^{\mathrm{glo}}\right)
 \Big],
@@ -294,16 +292,18 @@ m_{i,t}\,
 \end{equation}
 where the local branch captures trajectory-specific contextual credit and the
 global branch injects a cross-trajectory semantic prior.
+Because the two heads are trained jointly with a shared backbone, we do not
+introduce an explicit mixing weight in the training loss.
 
 At inference time, we combine the two heads as
 \[
 \hat y_{i,t}
 =
-\eta_{\mathrm{loc}} \hat y_{i,t}^{\mathrm{loc}}
+\lambda \hat y_{i,t}^{\mathrm{loc}}
 +
-\eta_{\mathrm{glo}} \hat y_{i,t}^{\mathrm{glo}},
+(1-\lambda)\hat y_{i,t}^{\mathrm{glo}},
 \]
-where \(\eta_{\mathrm{loc}}\) and \(\eta_{\mathrm{glo}}\) control the
-contribution of the two heads.
+where \(\lambda\in[0,1]\) controls the trade-off between the local and global
+heads at inference time.
 The resulting score balances local causal evidence with global semantic
 regularity and serves as the final step-level reward.

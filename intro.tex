@@ -33,9 +33,8 @@ reusable source of step-level supervision.
 For long-horizon reasoning, the central challenge remains how to transform a
 single final outcome into reliable credit for individual reasoning steps.
 
-This challenge motivates a different question:
-can step-level credit be derived from the trajectory data itself, without
-relying on external judges?
+This challenge leads us to ask whether step-level credit can be derived
+directly from trajectory data itself, without relying on external judges.
 A multi-step reasoning trajectory that jointly yields a final reward naturally
 resembles a cooperative game with a shared payoff.
 This analogy points to Shapley values, which allocate total payoff by marginal
@@ -71,12 +70,13 @@ We then estimate instance-level local credit by combining a path-integrated
 attribution mechanism inspired by Aumann--Shapley with a pairwise
 counterfactual consistency check, which together measure how each step changes
 the predicted value of the trajectory.
-This continuous attribution is especially useful in our setting because it is
-compatible with differentiable value models and provides a principled way to
-approximate ordered marginal contributions beyond a single hard ablation.
+Because the trajectory scorer is differentiable, we can define this local
+credit through path-integrated attribution rather than a single hard ablation,
+yielding a smoother estimate of each step's effect on the predicted trajectory
+value.
 In parallel, we estimate distribution-level global priors from semantic
-neighbor statistics across trajectories, capturing whether a step tends to be
-intrinsically useful beyond one specific rollout.
+neighbor statistics across trajectories, capturing whether a step pattern tends
+to correlate with successful reasoning beyond one specific rollout.
 These local and global signals are jointly distilled into a shared PRM
 backbone through a dual-head objective, balancing causal specificity with
 cross-trajectory stability.
@@ -106,7 +106,7 @@ Our main contributions are summarized as follows:
     tailored to temporally ordered and causally constrained reasoning
     trajectories.
     \item We present an end-to-end SPRM training framework that unifies local
-    causal attribution and global intrinsic-value estimation, and validate its
-    effectiveness through comprehensive analyses and experiments on
+    trajectory-level attribution and global cross-trajectory priors, and
+    validate its effectiveness through comprehensive analyses and experiments on
     ProcessBench, PRMBench and Best-of-\(N\) benchmarks.
 \end{itemize}
