@@ -28,7 +28,7 @@ protocol:
 representation \(x_{i,0}\);
 (2) IG with the \texttt{question\_end} representation;
 (3) IG with the \texttt{question\_end} representation and
-\(\tilde R_{i,t}\)-based local filtering; and
+\(R_{i,t}^{\mathrm{causal}}\)-based local filtering; and
 (4) the full SPRM that further adds \(\delta_{i,t}^{\mathrm{glo}}\).
 
 Three observations are consistent across metrics.
@@ -40,7 +40,7 @@ The transition from the problem statement to the reasoning chain already
 contains information about how subsequent steps should be interpreted, so
 including \(x_{i,0}\) gives the scorer a more stable anchor for the first
 credit-assignment decision.
-Second, adding \(\tilde R_{i,t}\)-based filtering further stabilizes training
+Second, adding \(R_{i,t}^{\mathrm{causal}}\)-based filtering further stabilizes training
 and improves the balance between \textit{Err} and \textit{Cor}, which
 indicates that raw IG-based local signals contain non-trivial noise and
 benefit from an agreement check against explicit counterfactual perturbations.
@@ -62,7 +62,7 @@ robustness against context-dependent fluctuations in step value.
 \subsection{Filtering Strategy Comparison}
 We next ask two questions:
 is filtering itself necessary for local supervision, and if so, why do we use
-\(\tilde R_{i,t}\) rather than an alternative LLM-consistency filter?
+\(R_{i,t}^{\mathrm{causal}}\) rather than an alternative LLM-consistency filter?
 To answer them, we compare the two filtering strategies under the same
 evaluation protocol.
 
@@ -89,15 +89,16 @@ as supervision.
 The two filters, however, emphasize different notions of reliability.
 The LLM-consistency filter is more aligned with semantic agreement and can
 sharpen sensitivity-oriented indicators such as first-error localization.
-By contrast, \(\tilde R_{i,t}\) explicitly asks whether removing the current
-step, together with its strongest short-range interactions, changes the
+By contrast, \(R_{i,t}^{\mathrm{causal}}\) explicitly asks whether removing the
+current step, together with its strongest in-window interactions, changes the
 predicted trajectory value.
 It is therefore more tightly aligned with the contextual contribution that the
 local head is intended to capture.
 This leads to more stable gains on correct-path acceptance and stronger
 behavior on the harder long-horizon benchmarks.
 
-This comparison clarifies why the final method uses \(\tilde R_{i,t}\).
+This comparison clarifies why the final method uses
+\(R_{i,t}^{\mathrm{causal}}\).
 The LLM-consistency filter is a useful empirical reference because it confirms
 that denoising local credit matters, but the pairwise counterfactual filter is
 more faithful to our target quantity: whether the current step helps or hurts

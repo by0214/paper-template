@@ -61,7 +61,7 @@ For each trajectory, the reasoning steps are treated as players
 \(
 \mathcal{N}_i=\{1,\ldots,T_i\}
 \),
-and a coalition \(S\subseteq\mathcal{N}_i\) is assigned value \(v_i(S)\).
+and a coalition \(S\subseteq\mathcal{N}_i\) is assigned value \(v(S)\).
 Under the classical discrete Shapley formulation, the credit of step \(t\) is
 \begin{equation}
 \label{eq:discrete_shapley}
@@ -70,9 +70,9 @@ Under the classical discrete Shapley formulation, the credit of step \(t\) is
 \frac{1}{T_i!}
 \sum_{\pi\in\Pi(\mathcal{N}_i)}
 \Big[
-v_i\!\big(\mathrm{Pre}_{\pi}(t)\cup\{t\}\big)
+v\!\big(\mathrm{Pre}_{\pi}(t)\cup\{t\}\big)
 -
-v_i\!\big(\mathrm{Pre}_{\pi}(t)\big)
+v\!\big(\mathrm{Pre}_{\pi}(t)\big)
 \Big],
 \end{equation}
 where \(\Pi(\mathcal{N}_i)\) is the set of all permutations of
@@ -100,7 +100,7 @@ is admissible, then the discrete Shapley value in
 \begin{equation}
 \phi_{i,t}^{\mathrm{ord}}
 =
-v_i(P_{i,t})-v_i(P_{i,t-1}).
+v(P_{i,t})-v(P_{i,t-1}).
 \end{equation}
 \end{lemma}
 
@@ -112,12 +112,12 @@ difference above.
 
 \begin{lemma}
 \label{lem:reward_shaping_invariance}
-Let \(v_i^\star(P_{i,t})\) denote the optimal trajectory value on prefix state
+Let \(v^\star(P_{i,t})\) denote the optimal trajectory value on prefix state
 \(P_{i,t}\), and define the dense step reward
 \(
 \tilde r_{i,t}^\star
 =
-v_i^\star(P_{i,t})-v_i^\star(P_{i,t-1}).
+v^\star(P_{i,t})-v^\star(P_{i,t-1}).
 \)
 Then a PRM trained on this value-difference reward induces the same optimal
 policy as the original sparse terminal reward.
@@ -139,24 +139,19 @@ To obtain a more useful local signal, we encode each trajectory into a matrix
 X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
 \in\mathbb{R}^{(T_i+1)\times d},
 \)
-where \(x_{i,0}\in\mathbb{R}^{d}\) is the question-context anchor and
-\(x_{i,t}\in\mathbb{R}^{d}\) is the \(d\)-dimensional representation of step
+where \(x_{i,0}\in\mathbb{R}^{d}\) is the \textit{question\_end} representation and
+\(x_{i,t}\in\mathbb{R}^{d}\) is the representation of step
 \(s_{i,t}\).
 These representations are produced by an encoder with sufficient semantic
 capacity; in our implementation, this encoder is the backbone LLM.
-Let \(b\in\mathbb{R}^{d}\) be a semantically uninformative baseline vector, and
-for any coalition \(S\subseteq\mathcal{N}_i\), let \(X_i^{S}\) keep
-\(x_{i,0}\) and all \(x_{i,t}\) with \(t\in S\), while replacing the remaining
-step representations with \(b\).
 
 We then learn a lightweight trajectory scorer
 \(F_{\theta_{\mathrm{scorer}}}:\mathbb{R}^{(T_i+1)\times d}\rightarrow[0,1]\)
 from scratch on \(\mathcal{D}\), and interpret it as a learnable
-approximation to \(v_i\).
-Because this scorer is used only as an internal differentiable value surrogate,
-rather than as an external evaluator, it does not import value judgments from a
-separate pretrained judge distribution.
-Its parameters are obtained by
+approximation to \(v\).
+This scorer maps step representations to a smooth trajectory-level value signal
+that supports credit assignment, rather than serving as an external judge.
+It can be trained directly from the step representations and the final reward:
 \begin{equation}
 \label{eq:stage1_objective}
 \theta_{\mathrm{scorer}}^\star
@@ -176,12 +171,13 @@ Rather than using the discrete difference from
 \Cref{lem:ordered_shapley_degenerate} directly, we define local marginal credit
 through Aumann--Shapley attribution.
 Intuitively, this attribution measures the marginal contribution of a step by
-integrating the scorer gradient along the straight-line path from a
-semantically empty baseline vector to the observed step representation, thereby
-producing continuous credit without relying on external judges and their
-associated biases.
-Let \(B_i=[b,\ldots,b]\) be the corresponding baseline sequence with the same
-shape as \(X_i\).
+integrating the scorer gradient along the straight-line path from a baseline
+representation to the observed step representation, thereby producing
+continuous credit without relying on external judges and their associated
+biases.
+To instantiate this path, let \(b\in\mathbb{R}^{d}\) be a semantically
+uninformative baseline vector, and let \(B_i=[b,\ldots,b]\) be the
+corresponding baseline sequence with the same shape as \(X_i\).
 The interpolation path from baseline to observation is
 \(
 \gamma_i(\alpha)=B_i+\alpha(X_i-B_i)
@@ -207,10 +203,10 @@ This quantity measures whether the current step increases or decreases the
 predicted value of the full trajectory when evaluated in its observed context,
 without collapsing the signal to a single discrete prefix difference.
 
-Integrated gradients provide a smooth estimate of local marginal contribution,
-but they do not explicitly capture discrete step interactions and can still be
-noisy because they depend on a learned value model.
-We therefore complement them with a pairwise counterfactual check.
+Integrated gradients measure the marginal effect of a step on the scorer
+output.
+To additionally capture interactions between steps, we complement them with a
+pairwise counterfactual check.
 Let \(X_i^{(-t)}\) be the sequence obtained by replacing only \(x_{i,t}\) with
 the baseline vector \(b\), and let \(X_i^{(-t,-u)}\) replace both \(x_{i,t}\)
 and \(x_{i,u}\) with \(b\).
@@ -223,11 +219,23 @@ F_{\theta_{\mathrm{scorer}}^\star}(X_i)
 -
 F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t)}).
 \end{equation}
-To model short-range dependencies between adjacent reasoning steps, we further
-compute a pairwise interaction term
+To account for step interactions while keeping the perturbation computation
+tractable, we further define a pairwise interaction term over an ordered local
+window.
+Although the explicit perturbation is local in index space, each step
+representation already summarizes its causal prefix, so these windowed
+interactions can still reflect dependencies that propagate through long
+reasoning chains:
+\begin{equation}
+\label{eq:pairwise_window}
+\mathcal{W}(t)
+=
+\{u \mid 1 \le u < t,\; t-u \le w\},
+\end{equation}
+where \(w\) is a small window size.
 \begin{equation}
 \label{eq:pairwise_interaction}
-I_{i,t,u}
+R_{i,t,u}^{\mathrm{int}}
 =
 F_{\theta_{\mathrm{scorer}}^\star}(X_i)
 -
@@ -237,33 +245,26 @@ F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-u)})
 +
 F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t,-u)}),
 \end{equation}
-but only within an ordered local window
-\begin{equation}
-\label{eq:pairwise_window}
-\mathcal{W}(t)
-=
-\{u \mid 1 \le u < t,\; t-u \le w\},
-\end{equation}
-where \(w\) is a small window size.
 We then construct deterministic interaction weights
 \begin{equation}
 \label{eq:pairwise_weight}
 \bar g_{i,t,u}
 =
-\frac{\mathbf{1}(u\in\mathcal{W}(t))\max(I_{i,t,u},0)}
-{\sum_{v\in\mathcal{W}(t)} \max(I_{i,t,v},0)+\epsilon},
+\frac{\mathbf{1}(u\in\mathcal{W}(t))\max(R_{i,t,u}^{\mathrm{int}},0)}
+{\sum_{v\in\mathcal{W}(t)} \max(R_{i,t,v}^{\mathrm{int}},0)+\epsilon},
 \end{equation}
-and define the interaction-enhanced counterfactual score
+and define the interaction-enhanced causal score
 \begin{equation}
 \label{eq:pairwise_counterfactual}
-\tilde R_{i,t}
+R_{i,t}^{\mathrm{causal}}
 =
 R_{i,t}^{\mathrm{dir}}
 +
-\beta\sum_{u\in\mathcal{W}(t)} \bar g_{i,t,u} I_{i,t,u},
+\beta\sum_{u\in\mathcal{W}(t)} \bar g_{i,t,u} R_{i,t,u}^{\mathrm{int}},
 \end{equation}
 where \(\beta\) controls the strength of the pairwise correction.
-In our framework, \(\tilde R_{i,t}\) is not used as the main local target.
+In our framework, \(R_{i,t}^{\mathrm{causal}}\) is not used as the main local
+target.
 Its role is to provide a discrete consistency check for the sign of
 \(\delta_{i,t}^{\mathrm{loc}}\).
 
@@ -337,7 +338,7 @@ We therefore define the consistency mask
 m_{i,t}
 =
 \mathbf{1}\!\left(
-\delta_{i,t}^{\mathrm{loc}} \cdot \tilde R_{i,t} > 0
+\delta_{i,t}^{\mathrm{loc}} \cdot R_{i,t}^{\mathrm{causal}} > 0
 \right).
 \end{equation}
 The PRM objective is

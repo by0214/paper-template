@@ -18,16 +18,16 @@ For step \(t\), the predecessors in that unique ordering are exactly the prefix
 set \(P_{i,t-1}\), and adding step \(t\) produces \(P_{i,t}\).
 Hence the discrete Shapley value reduces to
 \(
-\phi_{i,t}^{\mathrm{ord}}=v_i(P_{i,t})-v_i(P_{i,t-1})
+\phi_{i,t}^{\mathrm{ord}}=v(P_{i,t})-v(P_{i,t-1})
 \).
 \end{proof}
 
 \begin{proof}[Proof of \Cref{lem:reward_shaping_invariance}]
 Let the original sparse reward be zero on intermediate steps and terminal-only
 at the end of the trajectory.
-Under the optimal value function \(v_i^\star\), define
+Under the optimal value function \(v^\star\), define
 \(
-\Phi(P_{i,t})=v_i^\star(P_{i,t})
+\Phi(P_{i,t})=v^\star(P_{i,t})
 \).
 Then the dense step reward in
 \Cref{lem:reward_shaping_invariance} can be written as
