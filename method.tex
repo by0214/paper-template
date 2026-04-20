@@ -22,7 +22,7 @@ SPRM distills both into a unified process reward model (PRM).
 \includegraphics[width=\textwidth]{figures/overview-4-12.drawio.pdf}
 \caption{Overview of SPRM.
 Starting from outcome-only reasoning trajectories, we first encode the question
-and each reasoning step into boundary representations.
+and each reasoning step into vector representations.
 We then learn a trajectory-level scorer that turns sparse outcome supervision
 into a differentiable trajectory value function.
 On top of this value function, we construct a local supervision signal through
@@ -70,21 +70,24 @@ where
 \(
 \tau_i=(q_i,s_{i,1},\ldots,s_{i,T_i})
 \)
-is a reasoning trajectory and \(r_i\in[0,1]\) is its final outcome reward.
-To represent trajectories, we insert a special boundary token
-\(\langle\texttt{ST\_END}\rangle\) after the question and after every reasoning
-step, and use the final-layer hidden state at each boundary as the
-representation of the immediately preceding segment.
-Let \(x_{i,0}\in\mathbb{R}^{d}\) denote the question-boundary representation and
-\(x_{i,t}\in\mathbb{R}^{d}\) denote the representation of step \(s_{i,t}\) for
-\(t\in\{1,\ldots,T_i\}\).
-We write the full boundary sequence as
+is a reasoning trajectory and \(r_i\in\{0,1\}\) is its final outcome reward.
+To convert \(\tau_i\) into vector representations, we use an encoder with
+sufficient semantic encoding capacity.
+For example, in our implementation 
+we insert a special boundary token \(\langle\texttt{ST\_END}\rangle\) after the
+question and after every reasoning step, and take the final-layer hidden state
+at each inserted boundary as the representation of the corresponding step.
+Let \(x_{i,0}\in\mathbb{R}^{d}\) denote the representation at the
+\texttt{question\_end} position and \(x_{i,t}\in\mathbb{R}^{d}\) denote the
+representation of step \(s_{i,t}\) for \(t\in\{1,\ldots,T_i\}\).
+We write the full trajectory as
 \(
 X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
 \).
-The question boundary serves as a contextual anchor in trajectory scoring and
-credit assignment, while supervision targets are constructed only for
-reasoning steps \(t\ge 1\).
+The \texttt{question\_end} representation is included during training and
+serves as an anchor for trajectory scoring and credit assignment, because it
+encodes the pure background information of the problem before any reasoning
+step is taken.
 
 The first obstacle is that the observed reward is available only at the
 trajectory level.
@@ -105,11 +108,11 @@ the dataset:
 \arg\min_{\theta_{\mathrm{scorer}}}
 \mathbb{E}_{(\tau,r)\sim\mathcal{D}}
 \left[
-\ell\!\left(F_{\theta_{\mathrm{scorer}}}(X),r\right)
+\mathrm{BCE}\!\left(F_{\theta_{\mathrm{scorer}}}(X),r\right)
 \right],
 \end{equation}
-where \(\ell(\cdot,\cdot)\) is the binary cross-entropy loss with a possibly
-soft target \(r\in[0,1]\).
+where \(\mathrm{BCE}(\cdot,\cdot)\) denotes the binary cross-entropy loss with
+binary target \(r\in\{0,1\}\).
 After training, \(F_{\theta_{\mathrm{scorer}}^\star}\) provides a differentiable
 trajectory value estimate that captures how the full reasoning chain supports
 the final outcome.
@@ -247,7 +250,7 @@ to the trajectory-specific local signal.
 \label{sec:method_prm}
 
 The local and global signals above are used to supervise the final PRM at the
-boundary positions corresponding to reasoning steps.
+positions corresponding to reasoning steps.
 The PRM reads the same boundary-augmented sequence and uses a shared backbone
 with two task-specific heads, jointly parameterized by
 \(\theta_{\mathrm{PRM}}\).

@@ -24,14 +24,16 @@ training/evaluation protocol.}
 
 Figure~\ref{fig:ablation_all_metrics} reports four variants under a unified
 protocol:
-(1) IG-only local supervision without the question-boundary state \(x_{i,0}\);
-(2) IG with the question-boundary state;
-(3) IG with the question-boundary state and
+(1) IG-only local supervision without the \texttt{question\_end}
+representation \(x_{i,0}\);
+(2) IG with the \texttt{question\_end} representation;
+(3) IG with the \texttt{question\_end} representation and
 \(\tilde R_{i,t}\)-based local filtering; and
 (4) the full SPRM that further adds \(\delta_{i,t}^{\mathrm{glo}}\).
 
 Three observations are consistent across metrics.
-First, introducing the question-boundary state improves boundary calibration,
+First, introducing the \texttt{question\_end} representation improves boundary
+calibration,
 showing that local attribution should not start from the first reasoning step
 alone.
 The transition from the problem statement to the reasoning chain already
@@ -49,9 +51,9 @@ improves, yielding the best trade-off in the full model.
 
 Overall, the ablation confirms that SPRM's gain does not come from a single
 module.
-The question-boundary state improves step alignment, pairwise counterfactual
-filtering reduces local label noise, and the global prior adds robustness
-against context-dependent fluctuations in step value.
+The \texttt{question\_end} representation improves step alignment, pairwise
+counterfactual filtering reduces local label noise, and the global prior adds
+robustness against context-dependent fluctuations in step value.
 
 \subsection{Filtering Strategy Comparison}
 We next ask two questions:

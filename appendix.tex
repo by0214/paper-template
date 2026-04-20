@@ -63,7 +63,8 @@ baselines.
 The motivation for option (i) is to capture incremental step contribution.
 In this case, for input $X_i=[x_{i,0},\ldots,x_{i,T_i}]$, the baseline sequence
 is $X_{i}^{baseline}=[x_{i,-1}, x_{i,0}, \ldots, x_{i,T_i-1}]$, where
-$x_{i,-1}$ denotes a manually defined baseline for the question-boundary state,
+$x_{i,-1}$ denotes a manually defined baseline for the \texttt{question\_end}
+representation,
 interpreted as a semantically uninformative vector.
 IG completeness then gives:
 
