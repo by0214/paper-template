@@ -344,23 +344,22 @@ m_{i,t}
 \right).
 \end{equation}
 The PRM objective is
-\begin{equation}
+\begin{align}
 \label{eq:stage3_objective}
 \theta_{\mathrm{PRM}}^\star
-=
+&=
 \arg\min_{\theta_{\mathrm{PRM}}}
-\begin{aligned}
 \mathbb{E}_{(\tau_i,r_i)\sim\mathcal{D}}
 \Big[
-&\sum_{t=1}^{T_i}
+\sum_{t=1}^{T_i}
 m_{i,t}\,
-\mathrm{BCE}\!\left(\hat y_{i,t}^{\mathrm{loc}}, y_{i,t}^{\mathrm{loc}}\right) \\
-&+
+\mathrm{BCE}\!\left(\hat y_{i,t}^{\mathrm{loc}}, y_{i,t}^{\mathrm{loc}}\right)
+\notag\\
+&\quad+
 \sum_{t=1}^{T_i}
 \mathrm{BCE}\!\left(\hat y_{i,t}^{\mathrm{glo}}, y_{i,t}^{\mathrm{glo}}\right)
-\Big],
-\end{aligned}
-\end{equation}
+\Big].
+\end{align}
 where the local branch captures trajectory-specific contextual credit and the
 global branch injects a cross-trajectory semantic prior.
 Because the two heads are trained jointly with a shared backbone, we do not
