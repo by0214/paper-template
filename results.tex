@@ -50,61 +50,35 @@ construct process-level supervision:
 These baselines cover representative paradigms for process supervision under
 different assumptions: explicit human annotation, Monte Carlo step labeling,
 and labels derived from final outcomes.
-Table~\ref{tab:baseline_supervision_compare} summarizes them by training
-dataset, process-label source, and the main modeling choice that distinguishes
-each method.
+Table~\ref{tab:baseline_supervision_compare} provides a compact comparison of
+whether each model relies on automatically constructed supervision and whether
+it explicitly incorporates causal reasoning.
 
-\begin{table*}[t!]
+\begin{table}[t]
 \centering
 \small
-\setlength{\tabcolsep}{4.2pt}
-\renewcommand{\arraystretch}{1.08}
-\caption{Comparison of the evaluated PRM baselines by training dataset,
-process-label source, and modeling choice.
-SPRM is trained on Math-Shepherd trajectories but discards the provided
-intermediate labels, using only rollout trajectories and final outcomes.}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.05}
+\caption{Compact comparison of PRM baselines.
+``Auto.'' indicates whether the model uses automatically constructed process
+supervision rather than human step annotation or curated labels.
+``Causal'' indicates whether the method explicitly models causal effects.}
 \label{tab:baseline_supervision_compare}
-\resizebox{0.97\textwidth}{!}{%
-\begin{tabular}{p{4.0cm}p{2.8cm}p{3.0cm}p{6.0cm}}
+\begin{tabular}{p{0.56\columnwidth}cc}
 \toprule
-\textbf{Model} & \textbf{Dataset} & \textbf{Process Label Source} & \textbf{Remarks} \\
+\textbf{Model} & \textbf{Auto.} & \textbf{Causal} \\
 \midrule
-Qwen2.5-Math-7B-PRM800K \citep{zhang-etal-2025-lessons}
-& PRM800K
-& Human annotation
-& Fine-tuned on PRM800K step labels. \\
-ReasonEval-7B \citep{DBLP:ReasonEval}
-& PRM800K
-& Human annotation
-& Uses human labels targeting step validity and redundancy. \\
-Math-Shepherd-7B \citep{wang2024math}
-& Math-Shepherd
-& Monte Carlo estimates
-& Uses Monte Carlo estimates as step supervision. \\
-RLHFlow-DeepSeek-8B / RLHFlow-Mistral-8B \citep{dong2024rlhf}
-& Self-generation
-& Monte Carlo estimates
-& Formulate as a multi-turn chat task \\
-OVM-Qwen3-4B \citep{ovm:conf/naacl/YuGW24}
-& Self-generation
-& From outcome
-& Broadcasts trajectory-level rewards to intermediate steps. \\
-PQM-DeepSeek-zeta4-7B \citep{DBLP:conf/iclr/LiL25a}
-& Math-Shepherd
-& Monte Carlo estimates
-& Models first-error boundaries with a ranking loss. \\
-Skywork-PRM-7B \citep{skywork}
-& -
-& -
-& Adds curated process supervision and deliberate reasoning strategies. \\
-SPRM-Qwen3-4B (ours)
-& Math-Shepherd
-& From outcome and reasoning trajectories
-& Uses only rollout trajectories and final outcomes; no intermediate labels are used for training. \\
+Qwen2.5-Math-7B-PRM800K & \(\times\) & \(\times\) \\
+ReasonEval-7B & \(\times\) & \(\times\) \\
+Math-Shepherd-7B & \checkmark & \(\times\) \\
+RLHFlow (DeepSeek / Mistral) & \checkmark & \(\times\) \\
+OVM-Qwen3-4B & \checkmark & \(\times\) \\
+PQM-DeepSeek-zeta4-7B & \checkmark & \(\times\) \\
+Skywork-PRM-7B & \(\times\) & \(\times\) \\
+SPRM-Qwen3-4B (ours) & \checkmark & \checkmark \\
 \bottomrule
-\end{tabular}%
-}
-\end{table*}
+\end{tabular}
+\end{table}
 
 \paragraph{Metrics}
 We follow the official evaluation protocols.
@@ -152,9 +126,9 @@ batch size 32.
 \subsection{Benchmark Evaluation}
 \begin{table*}[t!]
 \centering
-\small
-\setlength{\tabcolsep}{3.0pt}
-\renewcommand{\arraystretch}{1.1}
+\footnotesize
+\setlength{\tabcolsep}{2.6pt}
+\renewcommand{\arraystretch}{1.12}
 \newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
 \caption{ProcessBench results.
 \(\Delta\) reports the aggregate-score difference
@@ -164,32 +138,33 @@ Data for models marked with an asterisk (\(*\)) are sourced from
 \citep{zhang-etal-2025-lessons}.}
 \label{tab:processbench_res}
 \resizebox{0.97\textwidth}{!}{%
-\begin{tabular}{ll*{12}{C{2.9em}}C{4.3em}C{3.0em}}
+\begin{tabular}{@{}l*{12}{C{2.9em}}C{4.3em}C{3.1em}@{}}
 \toprule
-\multirow{2}{*}{\textbf{Type}} & \multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{GSM8K}} & \multicolumn{3}{c}{\textbf{MATH}} & \multicolumn{3}{c}{\textbf{OLYMPIADBENCH}} & \multicolumn{3}{c}{\textbf{OMNIMATH}} & \multirow{2}{*}{\textbf{Avg\_F1}} & \multirow{2}{*}{\(\mathbf{\Delta}\)} \\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
- & & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & & \\
+\multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{GSM8K}} & \multicolumn{3}{c}{\textbf{MATH}} & \multicolumn{3}{c}{\textbf{OLYMPIADBENCH}} & \multicolumn{3}{c}{\textbf{OMNIMATH}} & \multirow{2}{*}{\textbf{Avg\_F1}} & \multirow{2}{*}{\(\mathbf{\Delta}\)} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}\cmidrule(lr){11-13}
+ & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & & \\
 \midrule
-\multicolumn{16}{l}{\textit{LLM-as-a-Judge (Closed-source)}} \\
- & GPT-4o* & 70.0 & 91.2 & 79.2 & 54.4 & 76.6 & 63.6 & 45.8 & 58.4 & 51.4 & 45.2 & 65.6 & 53.5 & 61.9 & -1.9 \\
- & o1-mini* & 88.9 & 97.9 & 93.2 & 83.5 & 95.1 & 88.9 & 80.2 & 95.6 & 87.2 & 74.8 & 91.7 & 82.4 & 87.9 & -27.9 \\
+\multicolumn{15}{@{}l}{\textbf{LLM-as-a-Judge} \textit{(Closed-source)}} \\
+GPT-4o* & 70.0 & 91.2 & 79.2 & 54.4 & 76.6 & 63.6 & 45.8 & 58.4 & 51.4 & 45.2 & 65.6 & 53.5 & 61.9 & -1.9 \\
+o1-mini* & 88.9 & 97.9 & 93.2 & 83.5 & 95.1 & 88.9 & 80.2 & 95.6 & 87.2 & 74.8 & 91.7 & 82.4 & 87.9 & -27.9 \\
 \midrule
-\multicolumn{16}{l}{\textit{LLM-as-a-Judge (Open-source)}} \\
- & Llama-3.3-70B-Instruct* & 72.5 & 96.9 & 82.9 & 43.3 & 83.2 & 59.4 & 31.0 & 94.1 & 46.7 & 28.2 & 90.5 & 43.0 & 58.0 & \textbf{+2.0} \\
- & Qwen2.5-Math-72B-Instruct* & 49.8 & 96.9 & 65.8 & 36.0 & 94.3 & 52.1 & 19.5 & 97.3 & 32.5 & 19.0 & 96.3 & 31.7 & 45.5 & \textbf{+14.5} \\
- & Qwen2.5-72B-Instruct* & 62.8 & 96.9 & 76.2 & 46.3 & 93.1 & 61.8 & 38.7 & 92.6 & 54.6 & 36.6 & 90.9 & 52.2 & 61.2 & -1.2 \\
+\multicolumn{15}{@{}l}{\textbf{LLM-as-a-Judge} \textit{(Open-source)}} \\
+Llama-3.3-70B-Instruct* & 72.5 & 96.9 & 82.9 & 43.3 & 83.2 & 59.4 & 31.0 & 94.1 & 46.7 & 28.2 & 90.5 & 43.0 & 58.0 & \textbf{+2.0} \\
+Qwen2.5-Math-72B-Instruct* & 49.8 & 96.9 & 65.8 & 36.0 & 94.3 & 52.1 & 19.5 & 97.3 & 32.5 & 19.0 & 96.3 & 31.7 & 45.5 & \textbf{+14.5} \\
+Qwen2.5-72B-Instruct* & 62.8 & 96.9 & 76.2 & 46.3 & 93.1 & 61.8 & 38.7 & 92.6 & 54.6 & 36.6 & 90.9 & 52.2 & 61.2 & -1.2 \\
 \midrule
-\multicolumn{16}{l}{\textit{PRMs}} \\
- & Math-Shepherd-7B             & 33.1 & 88.7 & 48.2 & 17.8 & 84.1 & 29.4 & 15.0 & 68.2 & 24.6 & 15.2 & 74.2 & 25.2 & 31.9 & \textbf{+28.1} \\
- & RLHFlow-Mistral-8B           & 34.2 & 98.4 & 50.9 & 21.9 & 72.4 & 33.6 & 8.6 & 47.8 & 14.6 & 9.6 & 45.6 & 15.9 & 28.8 & \textbf{+31.2} \\
- & RLHFlow-DeepSeek-8B          & 24.6 & 98.4 & 39.4 & 22.6 & 78.1 & 35.0 & 10.3 & 51.3 & 17.1 & 10.3 & 51.9 & 17.2 & 27.2 & \textbf{+32.8} \\
- & Skywork-PRM-7B               & 58.4 & 70.0 & 63.7 & 40.7 & 62.3 & 49.3 & 16.0 & 20.0 & 17.8 & 12.3 & 34.4 & 18.2 & 37.3 & \textbf{+22.7} \\
- & ReasonEval-7B                & 19.8 & 97.4 & 32.9 & 27.4 & 82.5 & 41.2 & 22.7 & 64.6 & 33.6 & 21.5 & 72.6 & 33.1 & 35.2 & \textbf{+24.8} \\
- & Qwen2.5-Math-7B-Math-Shepherd* & 46.4 & 95.9 & 62.4 & 18.9 & 96.6 & 31.6 & 7.4 & 93.8 & 13.7 & 4.0 & 95.6 & 7.7 & 28.9 & \textbf{+31.1} \\
- & Qwen2.5-Math-7B-PRM800K      & 52.8 & 94.7 & 67.8 & 47.8 & 91.2 & 62.7 & 33.7 & 85.2 & 48.3 & 27.1 & 87.2 & 41.3 & 55.0 & \textbf{+5.0} \\
- & OVM-Qwen3-4B                 & 4.8 & 56.5 & 8.9 & 37.7 & 85.5 & 52.3 & 31.0 & 79.9 & 44.7 & 23.3 & 80.5 & 36.2 & 35.5 & \textbf{+24.5} \\
- & PQM-DeepSeek-zeta4-7B        & 31.9 & 40.9 & 35.8 & 22.2 & 19.7 & 20.9 & 8.9 & 6.2 & 7.3 & 11.1 & 15.8 & 13.0 & 19.2 & \textbf{+40.8} \\
- & SPRM-Qwen3-4B                & 55.5 & 94.8 & 70.1 & 52.4 & 76.0 & 62.8 & 48.1 & 60.0 & 53.2 & 48.6 & 60.2 & 53.8 & 60.0 & 0.0 \\
+\multicolumn{15}{@{}l}{\textbf{PRMs}} \\
+Math-Shepherd-7B & 33.1 & 88.7 & 48.2 & 17.8 & 84.1 & 29.4 & 15.0 & 68.2 & 24.6 & 15.2 & 74.2 & 25.2 & 31.9 & \textbf{+28.1} \\
+RLHFlow-Mistral-8B & 34.2 & 98.4 & 50.9 & 21.9 & 72.4 & 33.6 & 8.6 & 47.8 & 14.6 & 9.6 & 45.6 & 15.9 & 28.8 & \textbf{+31.2} \\
+RLHFlow-DeepSeek-8B & 24.6 & 98.4 & 39.4 & 22.6 & 78.1 & 35.0 & 10.3 & 51.3 & 17.1 & 10.3 & 51.9 & 17.2 & 27.2 & \textbf{+32.8} \\
+Skywork-PRM-7B & 58.4 & 70.0 & 63.7 & 40.7 & 62.3 & 49.3 & 16.0 & 20.0 & 17.8 & 12.3 & 34.4 & 18.2 & 37.3 & \textbf{+22.7} \\
+ReasonEval-7B & 19.8 & 97.4 & 32.9 & 27.4 & 82.5 & 41.2 & 22.7 & 64.6 & 33.6 & 21.5 & 72.6 & 33.1 & 35.2 & \textbf{+24.8} \\
+Qwen2.5-Math-7B-Math-Shepherd* & 46.4 & 95.9 & 62.4 & 18.9 & 96.6 & 31.6 & 7.4 & 93.8 & 13.7 & 4.0 & 95.6 & 7.7 & 28.9 & \textbf{+31.1} \\
+Qwen2.5-Math-7B-PRM800K & 52.8 & 94.7 & 67.8 & 47.8 & 91.2 & 62.7 & 33.7 & 85.2 & 48.3 & 27.1 & 87.2 & 41.3 & 55.0 & \textbf{+5.0} \\
+OVM-Qwen3-4B & 4.8 & 56.5 & 8.9 & 37.7 & 85.5 & 52.3 & 31.0 & 79.9 & 44.7 & 23.3 & 80.5 & 36.2 & 35.5 & \textbf{+24.5} \\
+PQM-DeepSeek-zeta4-7B & 31.9 & 40.9 & 35.8 & 22.2 & 19.7 & 20.9 & 8.9 & 6.2 & 7.3 & 11.1 & 15.8 & 13.0 & 19.2 & \textbf{+40.8} \\
+\addlinespace[1pt]
+\textbf{SPRM-Qwen3-4B} & 55.5 & 94.8 & 70.1 & 52.4 & 76.0 & 62.8 & 48.1 & 60.0 & 53.2 & 48.6 & 60.2 & 53.8 & \textbf{60.0} & 0.0 \\
 \bottomrule
 \end{tabular}%
 }
@@ -197,9 +172,9 @@ Data for models marked with an asterisk (\(*\)) are sourced from
 
 \begin{table*}[t!]
 \centering
-\small
-\setlength{\tabcolsep}{4.0pt}
-\renewcommand{\arraystretch}{1.1}
+\footnotesize
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.12}
 \caption{PRMBench results.
 \(\Delta\) reports the aggregate-score difference
 \(\mathrm{Overall}(\mathrm{SPRM})-\mathrm{Overall}(\mathrm{model})\).
@@ -208,26 +183,27 @@ Data for models marked with an asterisk (\(*\)) are sourced from
 \citep{DBLP:prmbench}.}
 \label{tab:prmbench_types_en}
 \resizebox{0.97\textwidth}{!}{%
-\begin{tabular}{llcccccccccccccc}
+\begin{tabular}{@{}l*{12}{C{2.9em}}C{4.2em}C{3.1em}@{}}
 \toprule
-\multirow{2}{*}{\textbf{Type}} & \multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{Simplicity}} & \multicolumn{5}{c}{\textbf{Soundness}} & \multicolumn{4}{c}{\textbf{Sensitivity}} & \multirow{2}{*}{\textbf{Overall}} & \multirow{2}{*}{\(\mathbf{\Delta}\)} \\
-\cmidrule(lr){3-5}\cmidrule(lr){6-10}\cmidrule(lr){11-14}
- & & NR & NCL & Avg & ES & SC & DC & CI & Avg & PS & DR & MS & Avg & & \\
+\multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{Simplicity}} & \multicolumn{5}{c}{\textbf{Soundness}} & \multicolumn{4}{c}{\textbf{Sensitivity}} & \multirow{2}{*}{\textbf{Overall}} & \multirow{2}{*}{\(\mathbf{\Delta}\)} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-9}\cmidrule(lr){10-13}
+ & NR & NCL & Avg & ES & SC & DC & CI & Avg & PS & DR & MS & Avg & & \\
 \midrule
-\multicolumn{16}{l}{\textit{LLM-as-a-Judge (Closed-source)}} \\
- & GPT-4o  & 57.0 & 62.4 & 59.7 & 72.0 & 69.7 & 70.7 & 71.1 & 70.9 & 62.5 & 65.7 & 99.2 & 75.8 & 66.8 & -6.2 \\
- & o1-mini & 65.6 & 63.7 & 64.6 & 74.5 & 67.7 & 73.8 & 72.3 & 72.1 & 61.8 & 64.8 & 100.0 & 75.5 & 68.8 & -8.2 \\
+\multicolumn{15}{@{}l}{\textbf{LLM-as-a-Judge} \textit{(Closed-source)}} \\
+GPT-4o & 57.0 & 62.4 & 59.7 & 72.0 & 69.7 & 70.7 & 71.1 & 70.9 & 62.5 & 65.7 & 99.2 & 75.8 & 66.8 & -6.2 \\
+o1-mini & 65.6 & 63.7 & 64.6 & 74.5 & 67.7 & 73.8 & 72.3 & 72.1 & 61.8 & 64.8 & 100.0 & 75.5 & 68.8 & -8.2 \\
 \midrule
-\multicolumn{16}{l}{\textit{PRMs}} \\
- & Math-Shepherd-7B     & 42.3 & 47.3 & 44.8 & 50.1 & 42.3 & 41.2 & 48.0 & 45.4 & 43.1 & 49.6 & 90.1 & 60.9 & 46.6 & \textbf{+14.0} \\
- & RLHFLOW-Mistral-8B   & 46.3 & 47.1 & 46.7 & 56.5 & 54.8 & 54.0 & 63.9 & 57.3 & 51.0 & 55.9 & 98.2 & 68.4 & 54.2 & \textbf{+6.4} \\
- & RLHFLOW-DeepSeek-8B  & 46.4 & 48.5 & 47.5 & 55.0 & 54.5 & 53.1 & 65.6 & 57.1 & 48.8 & 55.0 & 99.7 & 67.8 & 53.8 & \textbf{+6.8} \\
- & Skywork-PRM-7B       & 40.5 & 48.1 & 44.3 & 45.5 & 36.8 & 38.0 & 43.3 & 40.9 & 42.7 & 45.5 & 93.3 & 60.5 & 43.3 & \textbf{+17.3} \\
- & ReasonEval-7B        & 49.2 & 57.1 & 53.2 & 62.1 & 66.0 & 61.5 & 65.8 & 63.9 & 55.6 & 58.0 & 99.1 & 70.9 & 59.8 & \textbf{+0.8} \\
- & Qwen2.5-Math-7B-PRM800K & 48.6 & 47.8 & 48.2 & 62.1 & 59.4 & 58.7 & 68.5 & 62.2 & 52.9 & 64.0 & 99.8 & 72.2 & 59.1 & \textbf{+1.5} \\
- & OVM-Qwen3-4B         & 50.0 & 43.4 & 46.7 & 45.5 & 48.7 & 46.4 & 47.3 & 47.0 & 46.3 & 47.7 & 95.2 & 63.1 & 47.2 & \textbf{+13.4} \\
- & PQM-DeepSeek-zeta4-7B& 17.7 & 25.7 & 21.7 & 22.9 & 16.1 & 16.6 & 18.4 & 18.5 & 21.6 & 20.8 & 43.7 & 28.7 & 20.3 & \textbf{+40.3} \\
- & SPRM-Qwen3-4B        & 51.4 & 64.4 & 57.9 & 65.1 & 58.2 & 56.8 & 62.0 & 60.5 & 58.0 & 62.3 & 99.3 & 73.2 & 60.6 & 0.0 \\
+\multicolumn{15}{@{}l}{\textbf{PRMs}} \\
+Math-Shepherd-7B & 42.3 & 47.3 & 44.8 & 50.1 & 42.3 & 41.2 & 48.0 & 45.4 & 43.1 & 49.6 & 90.1 & 60.9 & 46.6 & \textbf{+14.0} \\
+RLHFLOW-Mistral-8B & 46.3 & 47.1 & 46.7 & 56.5 & 54.8 & 54.0 & 63.9 & 57.3 & 51.0 & 55.9 & 98.2 & 68.4 & 54.2 & \textbf{+6.4} \\
+RLHFLOW-DeepSeek-8B & 46.4 & 48.5 & 47.5 & 55.0 & 54.5 & 53.1 & 65.6 & 57.1 & 48.8 & 55.0 & 99.7 & 67.8 & 53.8 & \textbf{+6.8} \\
+Skywork-PRM-7B & 40.5 & 48.1 & 44.3 & 45.5 & 36.8 & 38.0 & 43.3 & 40.9 & 42.7 & 45.5 & 93.3 & 60.5 & 43.3 & \textbf{+17.3} \\
+ReasonEval-7B & 49.2 & 57.1 & 53.2 & 62.1 & 66.0 & 61.5 & 65.8 & 63.9 & 55.6 & 58.0 & 99.1 & 70.9 & 59.8 & \textbf{+0.8} \\
+Qwen2.5-Math-7B-PRM800K & 48.6 & 47.8 & 48.2 & 62.1 & 59.4 & 58.7 & 68.5 & 62.2 & 52.9 & 64.0 & 99.8 & 72.2 & 59.1 & \textbf{+1.5} \\
+OVM-Qwen3-4B & 50.0 & 43.4 & 46.7 & 45.5 & 48.7 & 46.4 & 47.3 & 47.0 & 46.3 & 47.7 & 95.2 & 63.1 & 47.2 & \textbf{+13.4} \\
+PQM-DeepSeek-zeta4-7B & 17.7 & 25.7 & 21.7 & 22.9 & 16.1 & 16.6 & 18.4 & 18.5 & 21.6 & 20.8 & 43.7 & 28.7 & 20.3 & \textbf{+40.3} \\
+\addlinespace[1pt]
+\textbf{SPRM-Qwen3-4B} & 51.4 & 64.4 & 57.9 & 65.1 & 58.2 & 56.8 & 62.0 & 60.5 & 58.0 & 62.3 & 99.3 & 73.2 & \textbf{60.6} & 0.0 \\
 \bottomrule
 \end{tabular}%
 }

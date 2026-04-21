@@ -159,8 +159,8 @@ It can be trained directly from the step representations and the final reward:
 \arg\min_{\theta_{\mathrm{scorer}}}
 \mathbb{E}_{(\tau,r)\sim\mathcal{D}}
 \left[
-\mathrm{BCE}\!\left(F_{\theta_{\mathrm{scorer}}}(X),r\right)
-\right],
+\mathrm{BCE}\!\left(F_{\theta_{\mathrm{scorer}}}(\mathrm{encoder}(\tau)),r\right)
+\right].
 \end{equation}
 where \(\mathrm{BCE}(\cdot,\cdot)\) denotes the binary cross-entropy loss with
 binary target \(r\in\{0,1\}\).

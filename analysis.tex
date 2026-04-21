@@ -1,8 +1,8 @@
 \section{Analysis}
 \label{sec:analysis}
 In the main text, we retain only analyses that directly support our core
-claims, namely why SPRM benefits from additive supervision components and why
-filtering is necessary for local credit assignment.
+claims, namely how SPRM constructs reliable local credit from outcome-only
+trajectories and how the global prior complements that local signal.
 Implementation-focused analyses, including Stage 1 model selection, input
 feature selection, and IG baseline selection, are deferred to
 Appendix~\ref{sec:appendix}.
@@ -10,96 +10,66 @@ Appendix~\ref{sec:appendix}.
 \subsection{Ablation Study}
 \label{ablation_study}
 Under fixed backbone, training-data scale, and optimization hyperparameters, we
-perform additive ablations over the key SPRM modules.
+perform targeted ablations over the key SPRM mechanisms.
 
-\todo{use table and redesign the ablation study to verify the role of each component in a more targeted manner.}
-\begin{figure*}[t]
+\begin{table}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/ablation_all_metrics.pdf}
-\caption{Ablation results of SPRM across all reported metrics. The figure
-summarizes the contribution of each module under a unified
-training/evaluation protocol.}
-\label{fig:ablation_all_metrics}
-\end{figure*}
+\footnotesize
+\setlength{\tabcolsep}{3.8pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Targeted Ablation I: local credit and consistency on ProcessBench.
+Metrics are averaged over GSM8K, MATH, OLYMPIADBENCH, and OMNIMATH.
+Panel A compares how the local credit signal is constructed.
+Panel B fixes IG with \texttt{question\_end} and compares different
+consistency mechanisms.}
+\label{tab:ablation_local_consistency}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Variant} & \textbf{Avg Err} & \textbf{Avg Cor} & \textbf{Avg F1} \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Panel A: Local credit construction}} \\
+Ordered value difference \(\Delta v\) & 44.8 & 67.4 & \textbf{53.8} \\
+IG w/o \texttt{question\_end} & 31.4 & 42.6 & 36.1 \\
+IG w/ \texttt{question\_end} & 37.7 & \textbf{76.5} & 50.2 \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Panel B: Consistency mechanism}} \\
+No consistency & 37.7 & 76.5 & 50.2 \\
+LLM consistency (DeepSeek-V3.2) & \textbf{47.3} & 70.6 & \textbf{55.8} \\
+\(R^{\mathrm{causal}}\) consistency & 42.7 & \textbf{79.0} & 55.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-Figure~\ref{fig:ablation_all_metrics} reports four variants under a unified
-protocol:
-(1) IG-only local supervision without the \texttt{question\_end}
-representation \(x_{i,0}\);
-(2) IG with the \texttt{question\_end} representation;
-(3) IG with the \texttt{question\_end} representation and
-\(R_{i,t}^{\mathrm{causal}}\)-based local filtering; and
-(4) the full SPRM that further adds \(\delta_{i,t}^{\mathrm{glo}}\).
+Table~\ref{tab:ablation_local_consistency} reorganizes the ablation around two
+questions: how to construct the local credit signal itself, and how to make
+that signal reliable enough to supervise the final PRM.
 
-Three observations are consistent across metrics.
-First, introducing the \texttt{question\_end} representation improves boundary
-calibration,
-showing that local attribution should not start from the first reasoning step
-alone.
+Panel A first compares three ways of forming local credit.
+Removing the \texttt{question\_end} representation causes a clear collapse
+across all metrics, confirming that local attribution should not start from the
+first reasoning step alone.
 The transition from the problem statement to the reasoning chain already
 contains information about how subsequent steps should be interpreted, so
-including \(x_{i,0}\) gives the scorer a more stable anchor for the first
-credit-assignment decision.
-Second, adding \(R_{i,t}^{\mathrm{causal}}\)-based filtering further stabilizes training
-and improves the balance between \textit{Err} and \textit{Cor}, which
-indicates that raw IG-based local signals contain non-trivial noise and
-benefit from an agreement check against explicit counterfactual perturbations.
-This is consistent with our theoretical view in \Cref{sec:method_local}:
-ordered discrete value differences alone mainly redistribute sparse outcome
-signals, so useful process supervision still requires smoother attribution plus
-an explicit reliability test.
-Third, incorporating \(\delta_{i,t}^{\mathrm{glo}}\) brings the strongest gains
-on the harder domains, especially OLYMPIADBENCH and OMNIMATH.
-Although \textit{Cor} may slightly decrease in some settings, the overall F1
-improves, yielding the best trade-off in the full model.
+including \(x_{i,0}\) gives the local scorer a better boundary anchor.
+The ordered value difference \(\Delta v\) remains a useful deterministic
+reference, but the final method is built on IG-based attribution because it can
+be paired with an explicit consistency mechanism rather than used as a fixed
+prefix difference alone.
 
-Overall, the ablation confirms that SPRM's gain does not come from a single
-module.
-The \texttt{question\_end} representation improves step alignment, pairwise
-counterfactual filtering reduces local label noise, and the global prior adds
-robustness against context-dependent fluctuations in step value.
+Panel B then asks how to denoise that IG-based local signal.
+Both consistency mechanisms substantially improve over using raw IG signs
+directly, which confirms that local credit needs an explicit reliability check
+before it is used as supervision.
+The LLM-based consistency signal yields the highest average F1, mainly through
+stronger error rejection, while \(R_{i,t}^{\mathrm{causal}}\)-based consistency
+preserves the best correct-path acceptance.
+We adopt \(R_{i,t}^{\mathrm{causal}}\) in the final method because it is more
+faithful to the quantity defined in \Cref{sec:method_local}: whether the
+current step changes the predicted value of the particular trajectory in which
+it appears.
 
-\subsection{Filtering Strategy Comparison}
-We next ask two questions:
-is filtering itself necessary for local supervision, and if so, why do we use
-\(R_{i,t}^{\mathrm{causal}}\) rather than an alternative LLM-consistency filter?
-To answer them, we compare the two filtering strategies under the same
-evaluation protocol.
-
-\todo{use table}
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/filter_all_metrics.pdf}
-\caption{Impact of the filtering strategy on all evaluation metrics. The plot
-reports performance differences between variants with and without filtering
-strategies.}
-\label{fig:filter_all_metrics}
-\end{figure*}
-
-As shown in Figure~\ref{fig:filter_all_metrics}, both filters improve over
-using raw local attribution alone, which shows that a filtering stage is
-necessary rather than optional.
-This is consistent with the role of \(\delta_{i,t}^{\mathrm{loc}}\): it is
-derived from a learned trajectory value function through a path-integrated
-attribution procedure, so its sign can fluctuate when the scorer is imperfect
-or when long trajectories amplify local noise.
-Filtering therefore acts as a reliability test before the local signal is used
-as supervision.
-
-The two filters, however, emphasize different notions of reliability.
-The LLM-consistency filter is more aligned with semantic agreement and can
-sharpen sensitivity-oriented indicators such as first-error localization.
-By contrast, \(R_{i,t}^{\mathrm{causal}}\) explicitly asks whether removing the
-current step, together with its strongest in-window interactions, changes the
-predicted trajectory value.
-It is therefore more tightly aligned with the contextual contribution that the
-local head is intended to capture.
-This leads to more stable gains on correct-path acceptance and stronger
-behavior on the harder long-horizon benchmarks.
-
-This comparison clarifies why the final method uses
-\(R_{i,t}^{\mathrm{causal}}\).
-The LLM-consistency filter is a useful empirical reference because it confirms
-that denoising local credit matters, but the pairwise counterfactual filter is
-more faithful to our target quantity: whether the current step helps or hurts
-the outcome of the specific trajectory in which it appears.
+\subsection{Global Prior and Head Complementarity}
+We reserve a second targeted ablation table for the global branch and
+inference-time head complementarity.
+It will compare the local-only model, additional prior variants, and the full
+semantic prior once the remaining runs are available.
