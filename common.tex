@@ -8,7 +8,7 @@
 \usepackage{amsfonts}
 \usepackage{nicefrac}
 \usepackage{microtype}
-\usepackage{xcolor}         % colors
+\usepackage[table]{xcolor}  % colors
 \usepackage{amsmath}
 \usepackage{amsthm}
 \usepackage{graphicx}
@@ -92,11 +92,24 @@
 % \tikzifexternalizing{\toggletrue{final}}{\togglefalse{final}}
 
 % tables
+\definecolor{TableBandGray}{gray}{0.94}
 \newcolumntype{d}{D{.}{.}{3.2}}
 \newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
 \makeatletter
 \newcolumntype{B}{>{\boldmath\DC@{.}{.}{3.2}}c<{\DC@end}}
 \makeatother
+\newcommand{\tabcompact}{%
+    \setlength{\tabcolsep}{3pt}%
+    \renewcommand{\arraystretch}{0.95}}
+\newcommand{\tabtight}{%
+    \setlength{\tabcolsep}{2.6pt}%
+    \renewcommand{\arraystretch}{0.92}}
+\newcommand{\tabgroup}[2]{%
+    \addlinespace[2pt]
+    \rowcolor{TableBandGray}
+    \multicolumn{#1}{@{}l}{\textbf{#2}} \\
+    \addlinespace[1pt]}
+\captionsetup[table]{skip=4pt}
 \newcommand{\supstar}{\mbox{\textsuperscript{\( \star \)}}}
 \newcommand{\supcirc}{\mbox{\textsuperscript{\( \circ \)}}}
 \newcommand{\supdagger}{\textsuperscript{\textdagger}}

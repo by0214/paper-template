@@ -57,29 +57,24 @@ it avoids external annotation or evaluation pipelines.
 \begin{table}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{0.96}
-\caption{Compact comparison of PRM baselines.
-``Auto.'' indicates whether the model uses automatically constructed process
-supervision.
-``No Ext.'' indicates whether supervision is derived without external
-annotators, judges, or curated intermediate labels.}
+\tabtight
+\caption{Baseline supervision regimes.
+``Auto.'' marks automatically constructed process supervision;
+``No Ext.'' marks no external annotators, judges, or curated intermediate
+labels.}
 \label{tab:baseline_supervision_compare}
-\begin{tabular}{@{}p{0.54\columnwidth}cc@{}}
+\begin{tabular}{@{}p{0.24\columnwidth}p{0.44\columnwidth}cc@{}}
 \toprule
-\textbf{Model} & \textbf{Auto.} & \textbf{No Ext.} \\
+\textbf{Paradigm} & \textbf{Representative models} & \textbf{Auto.} & \textbf{No Ext.} \\
 \midrule
-Qwen2.5-Math-7B-PRM800K & \(\times\) & \(\times\) \\
-ReasonEval-7B & \(\times\) & \(\times\) \\
-Math-Shepherd-7B & \checkmark & \(\times\) \\
-RLHFlow (DeepSeek / Mistral) & \checkmark & \(\times\) \\
-OVM-Qwen3-4B & \checkmark & \checkmark \\
-PQM-DeepSeek-zeta4-7B & \checkmark & \checkmark \\
-Skywork-PRM-7B & \(\times\) & \(\times\) \\
-SPRM-Qwen3-4B (ours) & \checkmark & \checkmark \\
+Human labels & Qwen2.5-PRM800K; ReasonEval & \(\times\) & \(\times\) \\
+MC labels & Math-Shepherd; RLHFlow & \checkmark & \(\times\) \\
+Outcome broadcast & OVM-Qwen3-4B & \checkmark & \checkmark \\
+First-error boundary & PQM-DeepSeek-zeta4-7B & \checkmark & \checkmark \\
+Curated process & Skywork-PRM-7B & \(\times\) & \(\times\) \\
+\textbf{Outcome-only attribution} & \textbf{SPRM-Qwen3-4B (ours)} & \checkmark & \checkmark \\
 \bottomrule
 \end{tabular}
-\vspace{-0.6em}
 \end{table}
 
 \paragraph{Metrics}
@@ -125,12 +120,13 @@ We perform LoRA fine-tuning on the backbone with a maximum context length of
 Training runs for 1 epoch with learning rate \(5\times10^{-5}\) and global
 batch size 32.
 
+\FloatBarrier
+
 \subsection{Benchmark Evaluation}
 \begin{table*}[t!]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{2.6pt}
-\renewcommand{\arraystretch}{1.12}
+\tabtight
 \caption{ProcessBench results.
 \(\Delta\) reports the aggregate-score difference
 \(\mathrm{Avg\_F1}(\mathrm{SPRM})-\mathrm{Avg\_F1}(\mathrm{model})\).
@@ -139,22 +135,22 @@ Data for models marked with an asterisk (\(*\)) are sourced from
 \citep{zhang-etal-2025-lessons}.}
 \label{tab:processbench_res}
 \resizebox{0.97\textwidth}{!}{%
-\begin{tabular}{@{}l*{12}{C{2.9em}}C{4.3em}C{3.1em}@{}}
+\begin{tabular}{@{}l*{12}{C{2.75em}}C{4.0em}C{2.9em}@{}}
 \toprule
 \multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{GSM8K}} & \multicolumn{3}{c}{\textbf{MATH}} & \multicolumn{3}{c}{\textbf{OLYMPIADBENCH}} & \multicolumn{3}{c}{\textbf{OMNIMATH}} & \multirow{2}{*}{\textbf{Avg\_F1}} & \multirow{2}{*}{\(\mathbf{\Delta}\)} \\
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}\cmidrule(lr){11-13}
  & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & Err & Cor & \textbf{F1} & & \\
 \midrule
-\multicolumn{15}{@{}l}{\textbf{LLM-as-a-Judge} \textit{(Closed-source)}} \\
+\tabgroup{15}{Closed-source judges}
 GPT-4o* & 70.0 & 91.2 & 79.2 & 54.4 & 76.6 & 63.6 & 45.8 & 58.4 & 51.4 & 45.2 & 65.6 & 53.5 & 61.9 & -1.9 \\
 o1-mini* & 88.9 & 97.9 & 93.2 & 83.5 & 95.1 & 88.9 & 80.2 & 95.6 & 87.2 & 74.8 & 91.7 & 82.4 & 87.9 & -27.9 \\
 \midrule
-\multicolumn{15}{@{}l}{\textbf{LLM-as-a-Judge} \textit{(Open-source)}} \\
+\tabgroup{15}{Open-source judges}
 Llama-3.3-70B-Instruct* & 72.5 & 96.9 & 82.9 & 43.3 & 83.2 & 59.4 & 31.0 & 94.1 & 46.7 & 28.2 & 90.5 & 43.0 & 58.0 & \textbf{+2.0} \\
 Qwen2.5-Math-72B-Instruct* & 49.8 & 96.9 & 65.8 & 36.0 & 94.3 & 52.1 & 19.5 & 97.3 & 32.5 & 19.0 & 96.3 & 31.7 & 45.5 & \textbf{+14.5} \\
 Qwen2.5-72B-Instruct* & 62.8 & 96.9 & 76.2 & 46.3 & 93.1 & 61.8 & 38.7 & 92.6 & 54.6 & 36.6 & 90.9 & 52.2 & 61.2 & -1.2 \\
 \midrule
-\multicolumn{15}{@{}l}{\textbf{PRMs}} \\
+\tabgroup{15}{PRMs}
 Math-Shepherd-7B & 33.1 & 88.7 & 48.2 & 17.8 & 84.1 & 29.4 & 15.0 & 68.2 & 24.6 & 15.2 & 74.2 & 25.2 & 31.9 & \textbf{+28.1} \\
 RLHFlow-Mistral-8B & 34.2 & 98.4 & 50.9 & 21.9 & 72.4 & 33.6 & 8.6 & 47.8 & 14.6 & 9.6 & 45.6 & 15.9 & 28.8 & \textbf{+31.2} \\
 RLHFlow-DeepSeek-8B & 24.6 & 98.4 & 39.4 & 22.6 & 78.1 & 35.0 & 10.3 & 51.3 & 17.1 & 10.3 & 51.9 & 17.2 & 27.2 & \textbf{+32.8} \\
@@ -174,8 +170,7 @@ PQM-DeepSeek-zeta4-7B & 31.9 & 40.9 & 35.8 & 22.2 & 19.7 & 20.9 & 8.9 & 6.2 & 7.
 \begin{table*}[t!]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.2pt}
-\renewcommand{\arraystretch}{1.12}
+\tabtight
 \caption{PRMBench results.
 \(\Delta\) reports the aggregate-score difference
 \(\mathrm{Overall}(\mathrm{SPRM})-\mathrm{Overall}(\mathrm{model})\).
@@ -184,17 +179,17 @@ Data for models marked with an asterisk (\(*\)) are sourced from
 \citep{DBLP:prmbench}.}
 \label{tab:prmbench_types_en}
 \resizebox{0.97\textwidth}{!}{%
-\begin{tabular}{@{}l*{12}{C{2.9em}}C{4.2em}C{3.1em}@{}}
+\begin{tabular}{@{}l*{12}{C{2.75em}}C{4.0em}C{2.9em}@{}}
 \toprule
 \multirow{2}{*}{\textbf{Model}} & \multicolumn{3}{c}{\textbf{Simplicity}} & \multicolumn{5}{c}{\textbf{Soundness}} & \multicolumn{4}{c}{\textbf{Sensitivity}} & \multirow{2}{*}{\textbf{Overall}} & \multirow{2}{*}{\(\mathbf{\Delta}\)} \\
 \cmidrule(lr){2-4}\cmidrule(lr){5-9}\cmidrule(lr){10-13}
  & NR & NCL & Avg & ES & SC & DC & CI & Avg & PS & DR & MS & Avg & & \\
 \midrule
-\multicolumn{15}{@{}l}{\textbf{LLM-as-a-Judge} \textit{(Closed-source)}} \\
+\tabgroup{15}{Closed-source judges}
 GPT-4o & 57.0 & 62.4 & 59.7 & 72.0 & 69.7 & 70.7 & 71.1 & 70.9 & 62.5 & 65.7 & 99.2 & 75.8 & 66.8 & -6.2 \\
 o1-mini & 65.6 & 63.7 & 64.6 & 74.5 & 67.7 & 73.8 & 72.3 & 72.1 & 61.8 & 64.8 & 100.0 & 75.5 & 68.8 & -8.2 \\
 \midrule
-\multicolumn{15}{@{}l}{\textbf{PRMs}} \\
+\tabgroup{15}{PRMs}
 Math-Shepherd-7B & 42.3 & 47.3 & 44.8 & 50.1 & 42.3 & 41.2 & 48.0 & 45.4 & 43.1 & 49.6 & 90.1 & 60.9 & 46.6 & \textbf{+14.0} \\
 RLHFLOW-Mistral-8B & 46.3 & 47.1 & 46.7 & 56.5 & 54.8 & 54.0 & 63.9 & 57.3 & 51.0 & 55.9 & 98.2 & 68.4 & 54.2 & \textbf{+6.4} \\
 RLHFLOW-DeepSeek-8B & 46.4 & 48.5 & 47.5 & 55.0 & 54.5 & 53.1 & 65.6 & 57.1 & 48.8 & 55.0 & 99.7 & 67.8 & 53.8 & \textbf{+6.8} \\

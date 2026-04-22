@@ -15,26 +15,25 @@ perform targeted ablations over the key SPRM mechanisms.
 \begin{table}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.8pt}
-\renewcommand{\arraystretch}{1.08}
-\caption{Targeted Ablation I: local credit and consistency on ProcessBench.
-Metrics are averaged over GSM8K, MATH, OLYMPIADBENCH, and OMNIMATH.
-Panel A compares how the local credit signal is constructed.
-Panel B fixes IG with \texttt{question\_end} and compares different
-consistency mechanisms.}
+\tabcompact
+\caption{Ablation I on ProcessBench.
+Metrics average over GSM8K, MATH, OLYMPIADBENCH, and OMNIMATH.
+Panel A compares local-credit construction;
+Panel B compares consistency mechanisms under IG +
+\texttt{question\_end}.}
 \label{tab:ablation_local_consistency}
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular}{@{}p{0.50\columnwidth}*{3}{C{0.13\columnwidth}}@{}}
 \toprule
-\textbf{Variant} & \textbf{Avg Err} & \textbf{Avg Cor} & \textbf{Avg F1} \\
+\textbf{Variant} & \textbf{Err} & \textbf{Cor} & \textbf{F1} \\
 \midrule
-\multicolumn{4}{@{}l}{\textbf{Panel A: Local credit construction}} \\
-Delta-value-only supervision & 16.0 & 0.9 & 1.6 \\
+\tabgroup{4}{Panel A: Local credit construction}
+Delta-value only & 16.0 & 0.9 & 1.6 \\
 IG w/o \texttt{question\_end} & 31.4 & 42.6 & 36.1 \\
-IG w/ \texttt{question\_end} & \textbf{37.7} & \textbf{76.5} & \textbf{50.2} \\
+IG + \texttt{question\_end} & \textbf{37.7} & \textbf{76.5} & \textbf{50.2} \\
 \midrule
-\multicolumn{4}{@{}l}{\textbf{Panel B: Consistency mechanism}} \\
+\tabgroup{4}{Panel B: Consistency mechanism}
 No consistency & 37.7 & 76.5 & 50.2 \\
-LLM consistency (DeepSeek-V3.2) & \textbf{47.3} & 70.6 & \textbf{55.8} \\
+LLM consistency & \textbf{47.3} & 70.6 & \textbf{55.8} \\
 \(R^{\mathrm{causal}}\) consistency & 42.7 & \textbf{79.0} & 55.4 \\
 \bottomrule
 \end{tabular}
@@ -73,6 +72,8 @@ faithful to the quantity defined in \Cref{sec:method_local}: whether the
 current step changes the predicted value of the particular trajectory in which
 it appears.
 
+\FloatBarrier
+
 \subsection{Global Prior and Head Complementarity}
 Table~\ref{tab:ablation_global_complementarity} asks a different question:
 what does the global branch add beyond local credit, and does that gain come
@@ -81,27 +82,23 @@ from semantic neighborhood structure rather than generic smoothing?
 \begin{table}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.8pt}
-\renewcommand{\arraystretch}{1.08}
-\caption{Targeted Ablation II: global prior and head complementarity on
-ProcessBench.
-Metrics are averaged over GSM8K, MATH, OLYMPIADBENCH, and OMNIMATH.
-Panel A compares training variants for the global branch.
-``Local + random-neighbor'' replaces the semantic prior with a random-neighbor
-variant under the same local pipeline.
-Panel B varies the local/global head-mixing weights.}
+\tabcompact
+\caption{Ablation II on ProcessBench.
+Metrics average over GSM8K, MATH, OLYMPIADBENCH, and OMNIMATH.
+Panel A compares global-prior variants;
+Panel B varies local/global head mixing.}
 \label{tab:ablation_global_complementarity}
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular}{@{}p{0.50\columnwidth}*{3}{C{0.13\columnwidth}}@{}}
 \toprule
-\textbf{Variant} & \textbf{Avg Err} & \textbf{Avg Cor} & \textbf{Avg F1} \\
+\textbf{Variant} & \textbf{Err} & \textbf{Cor} & \textbf{F1} \\
 \midrule
-\multicolumn{4}{@{}l}{\textbf{Panel A: Global prior variants}} \\
-Local full & 42.7 & \textbf{79.0} & 55.4 \\
-Local + random-neighbor & 43.8 & 74.6 & 55.2 \\
+\tabgroup{4}{Panel A: Global prior variants}
+Local only & 42.7 & \textbf{79.0} & 55.4 \\
+Local + random neighbors & 43.8 & 74.6 & 55.2 \\
 Global only & 26.0 & 46.9 & 33.4 \\
 Full SPRM & \textbf{51.2} & 73.3 & \textbf{60.0} \\
 \midrule
-\multicolumn{4}{@{}l}{\textbf{Panel B: Head mixing weights}} \\
+\tabgroup{4}{Panel B: Head mixing weights}
 \(\lambda_{\mathrm{loc}}=1.00,\ \lambda_{\mathrm{glo}}=0.00\) & 42.7 & 79.0 & 55.4 \\
 \(\lambda_{\mathrm{loc}}=0.75,\ \lambda_{\mathrm{glo}}=0.25\) & 40.9 & \textbf{83.1} & 54.7 \\
 \(\lambda_{\mathrm{loc}}=0.25,\ \lambda_{\mathrm{glo}}=0.75\) & 34.3 & 60.6 & 43.8 \\
@@ -112,7 +109,7 @@ Full SPRM & \textbf{51.2} & 73.3 & \textbf{60.0} \\
 
 Panel A shows that the global branch is complementary rather than
 substitutive.
-``Global only'' is much weaker than ``Local full'', which indicates that
+``Global only'' is much weaker than ``Local only'', which indicates that
 cross-trajectory regularities alone cannot replace trajectory-specific credit.
 At the same time, ``Full SPRM'' achieves the best average F1 by trading a
 modest drop in \textit{Cor} for a much larger gain in \textit{Err}, exactly
@@ -121,7 +118,7 @@ but globally unreliable patterns.
 The random-neighbor control further shows that this gain does not come from
 adding an arbitrary smoothing branch:
 replacing semantic retrieval with random neighbors slightly hurts both
-\textit{Cor} and overall F1 relative to ``Local full'', whereas the semantic
+\textit{Cor} and overall F1 relative to ``Local only'', whereas the semantic
 global branch produces a much larger F1 gain.
 
 Panel B then shows that head complementarity is not an all-or-nothing effect.
