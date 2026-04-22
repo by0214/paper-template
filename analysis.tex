@@ -33,8 +33,8 @@ IG + \texttt{question\_end} & \textbf{37.7} & \textbf{76.5} & \textbf{50.2} \\
 \midrule
 \tabgroup{4}{Panel B: Consistency mechanism}
 No consistency & 37.7 & 76.5 & 50.2 \\
-LLM consistency & \textbf{47.3} & 70.6 & \textbf{55.8} \\
-\(R^{\mathrm{causal}}\) consistency & 42.7 & \textbf{79.0} & 55.4 \\
+LLM consistency & \textbf{47.3} & 67.0 & \textbf{55.4} \\
+\(R^{\mathrm{causal}}\) consistency & 42.7 & \textbf{79.0} & \textbf{55.4} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -64,13 +64,14 @@ Panel B then asks how to denoise that IG-based local signal.
 Both consistency mechanisms substantially improve over using raw IG signs
 directly, which confirms that local credit needs an explicit reliability check
 before it is used as supervision.
-The LLM-based consistency signal yields the highest average F1, mainly through
-stronger error rejection, while \(R_{i,t}^{\mathrm{causal}}\)-based consistency
-preserves the best correct-path acceptance.
+The two mechanisms now tie on average F1, but with a different trade-off:
+LLM consistency achieves the strongest error rejection, whereas
+\(R_{i,t}^{\mathrm{causal}}\)-based consistency preserves much stronger
+correct-path acceptance.
 We adopt \(R_{i,t}^{\mathrm{causal}}\) in the final method because it is more
 faithful to the quantity defined in \Cref{sec:method_local}: whether the
 current step changes the predicted value of the particular trajectory in which
-it appears.
+it appears, while reaching the same average F1 as the LLM-based alternative.
 
 \FloatBarrier
 
@@ -101,6 +102,7 @@ Full SPRM & \textbf{51.2} & 73.3 & \textbf{60.0} \\
 \tabgroup{4}{Panel B: Head mixing weights}
 \(\lambda_{\mathrm{loc}}=1.00,\ \lambda_{\mathrm{glo}}=0.00\) & 42.7 & 79.0 & 55.4 \\
 \(\lambda_{\mathrm{loc}}=0.75,\ \lambda_{\mathrm{glo}}=0.25\) & 40.9 & \textbf{83.1} & 54.7 \\
+\(\lambda_{\mathrm{loc}}=0.50,\ \lambda_{\mathrm{glo}}=0.50\) & \textbf{51.2} & 73.3 & \textbf{60.0} \\
 \(\lambda_{\mathrm{loc}}=0.25,\ \lambda_{\mathrm{glo}}=0.75\) & 34.3 & 60.6 & 43.8 \\
 \(\lambda_{\mathrm{loc}}=0.00,\ \lambda_{\mathrm{glo}}=1.00\) & 26.0 & 46.9 & 33.4 \\
 \bottomrule
@@ -122,11 +124,14 @@ replacing semantic retrieval with random neighbors slightly hurts both
 global branch produces a much larger F1 gain.
 
 Panel B then shows that head complementarity is not an all-or-nothing effect.
-Moderate global mixing can further improve correct-path acceptance, as seen from
-the strong \textit{Cor} at
-\(\lambda_{\mathrm{loc}}=0.75,\lambda_{\mathrm{glo}}=0.25\), but placing too
-much weight on the global head sharply weakens both \textit{Err} and overall
-F1.
+A small amount of global mixing can improve correct-path acceptance, as seen
+from the strong \textit{Cor} at
+\(\lambda_{\mathrm{loc}}=0.75,\lambda_{\mathrm{glo}}=0.25\), while the balanced
+setting
+\(\lambda_{\mathrm{loc}}=0.50,\lambda_{\mathrm{glo}}=0.50\) recovers the best
+overall F1 and strongest \textit{Err}.
+By contrast, placing too much weight on the global head sharply weakens both
+\textit{Err} and overall F1.
 This trend is consistent with the intended role of the two heads:
 the local branch provides trajectory-specific evidence, while the global branch
 acts as a stabilizing prior rather than a replacement signal.
