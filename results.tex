@@ -11,6 +11,13 @@ We compare SPRM against a range of open-source PRMs and LLM-as-a-Judge
 baselines.
 Results are reported in Table~\ref{tab:processbench_res}
 and Table~\ref{tab:prmbench_types_en}.
+Our main conclusion below is restricted to baseline PRMs in a comparable
+practical regime.
+Much larger judges or backbones are included as reference points rather than
+as like-for-like competitors.
+Among the baselines, OVM-Qwen3-4B is the most controlled comparison because it
+shares the Qwen3-4B backbone and also derives process supervision from final
+outcomes.
 
 \paragraph{Training Data}
 We train SPRM on Math-Shepherd trajectories \citep{wang2024math}.
@@ -50,6 +57,9 @@ construct process-level supervision:
 These baselines cover representative paradigms for process supervision under
 different assumptions: explicit human annotation, Monte Carlo step labeling,
 and labels derived from final outcomes.
+Accordingly, when we discuss the main experimental takeaway, we focus on the
+matched baseline-PRM comparison and use the larger models mainly as external
+reference points.
 Table~\ref{tab:baseline_supervision_compare} provides a compact comparison of
 whether each model relies on automatically constructed supervision and whether
 it avoids external annotation or evaluation pipelines.
@@ -207,34 +217,34 @@ PQM-DeepSeek-zeta4-7B & 17.7 & 25.7 & 21.7 & 22.9 & 16.1 & 16.6 & 18.4 & 18.5 & 
 
 \paragraph{ProcessBench mainly highlights more robust step discrimination.}
 The clearest pattern on ProcessBench is that SPRM achieves the best average F1
-among PRMs through more robust step discrimination, maintaining a stronger
-trade-off between \textit{Err} and \textit{Cor} instead of over-optimizing only
-one side.
+within the matched baseline-PRM comparison, maintaining a stronger trade-off
+between \textit{Err} and \textit{Cor} instead of over-optimizing only one side.
 It reaches 60.0 average F1, with especially clear gains on OLYMPIADBENCH and
 OMNIMATH, where F1 rises to 53.2 and 53.8.
-This directly matches the design goal of SPRM:
-the local attribution head is intended to identify where a trajectory starts to
-go wrong, while the global semantic prior suppresses superficially plausible
-but semantically unreliable patterns that would otherwise distort step credit.
-This interpretation is also reflected in the baseline comparison.
+This interpretation is consistent with the ablations in
+\Cref{tab:ablation_processbench,sec:analysis}, where combining local credit
+with the global prior yields the strongest overall F1 and substantially
+improves \textit{Err}.
 Compared with Qwen2.5-Math-7B-PRM800K, which is trained with curated human
 process labels, SPRM gives up some \textit{Cor} on the harder sets but gains
 substantially on \textit{Err}, yielding a better overall F1.
 Compared with OVM-Qwen3-4B, which derives labels by broadcasting final rewards,
-the gap is much larger on \textit{Err}, suggesting that outcome broadcasting
-alone is insufficient for precise error localization.
+SPRM improves average F1 by 24.5 points and the gap is especially large on
+\textit{Err}, suggesting that outcome broadcasting alone is insufficient for
+precise error localization in this matched same-backbone comparison.
 
 \paragraph{PRMBench highlights cleaner reasoning preferences and stronger reaction to degraded steps.}
 PRMBench highlights a different advantage of SPRM: it prefers cleaner
 reasoning and reacts more sharply to trajectory degradation.
-SPRM reaches 57.9 on \textit{Simplicity} and 73.2 on \textit{Sensitivity},
-including 64.4 on NCL and 58.0 on PS, which indicates that it is less likely
+Within the baseline-PRM comparison, SPRM reaches 58.7 on \textit{Simplicity}
+and 74.3 on \textit{Sensitivity}, including 64.9 on NCL and 60.0 on PS, which
+indicates that it is less likely
 to reward redundant steps and more likely to penalize harmful edits or weakened
 reasoning.
-These behaviors align closely with the design of SPRM.
-The local attribution head makes the model sensitive to step-level failures,
-while the global prior suppresses semantically repetitive but superficially
-plausible patterns, leading to a PRM that is both sharper and more selective.
+This reading is again consistent with
+\Cref{tab:ablation_processbench,sec:analysis}, where the global prior improves
+selectivity beyond the local branch alone and balanced head mixing gives the
+best aggregate behavior.
 Compared with the baselines, the remaining gap on \textit{Soundness} suggests
 that explicit human supervision still helps with fine-grained semantic
 consistency, but the overall picture is that SPRM converts outcome-derived
@@ -254,24 +264,29 @@ each PRM, and report final-answer accuracy as a function of \(k\).
 \includegraphics[width=0.98\textwidth]{bon_prm_grid.pdf}
 \caption{Best-of-\(N\) inference with different PRMs.
 Each subplot reports accuracy as a function of \(k\) on one dataset.
-For each PRM, we plot its strongest available search-score variant at each
-\(k\), so the comparison emphasizes the reward model itself rather than a
-particular aggregation heuristic.}
+For each PRM, we evaluate both \texttt{min} and \texttt{mean} aggregation and
+plot the better averaged accuracy at each \(k\).
+Candidate trajectories are subsampled with 10 fixed random seeds, and all
+reported accuracies are averaged over the resulting reranking runs.}
 \label{fig:bon_prm_grid}
 \end{figure*}
 
-\Cref{fig:bon_prm_grid} shows that SPRM transfers cleanly from benchmark
-evaluation to inference-time reranking.
-Across all six plotted datasets, SPRM becomes the strongest method once the
-search budget is moderately large, and it is the best model on every dataset at
-the largest \(k\) shown in the figure.
+\Cref{fig:bon_prm_grid} reports the better of the \texttt{min} and
+\texttt{mean} aggregations for each model, averaged over reranking runs built
+from 10 fixed random-seed candidate samples.
+Under this fixed protocol, SPRM transfers cleanly from benchmark evaluation to
+inference-time reranking.
+Across all six plotted datasets, SPRM becomes the strongest PRM once the search
+budget is moderately large, and it is the best model on every dataset at the
+largest \(k\) shown in the figure.
 The gains are especially clear on \textsc{MMLU-STEM}, where SPRM reaches
 88.0\% and outperforms the strongest baseline by 17.0 points, and remain
 substantial on \textsc{CollegeMath}, \textsc{Gaokao2023en}, \textsc{Math500},
 and \textsc{OlympiadBench}, with gains of 6.2, 3.1, 3.0, and 3.0 points,
 respectively.
 
-This pattern is consistent with the main evaluation results.
+This pattern is consistent with the main evaluation results and with the
+complementary roles of the two heads in \Cref{tab:ablation_processbench}.
 As \(k\) grows, reranking becomes increasingly sensitive to whether the PRM can
 separate subtly flawed trajectories from genuinely strong ones.
 SPRM is useful here because the local head sharpens step-level discrimination,
