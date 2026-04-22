@@ -4,8 +4,8 @@ In the main text, we retain only analyses that directly support our core
 claims, namely how SPRM constructs reliable local credit from outcome-only
 trajectories and how the global prior complements that local signal.
 Implementation-focused analyses, including Stage 1 model selection, input
-feature selection, and IG baseline selection, are deferred to
-Appendix~\ref{sec:appendix}.
+feature selection, IG baseline selection, and extended neighborhood
+diagnostics, are deferred to Appendix~\ref{sec:appendix}.
 
 \subsection{Ablation Study}
 \label{ablation_study}
@@ -45,16 +45,16 @@ questions: how to construct the local credit signal itself, and how to make
 that signal reliable enough to supervise the final PRM.
 
 Panel A first compares three ways of forming local credit.
-Removing the \texttt{question\_end} representation causes a clear collapse
-across all metrics, confirming that local attribution should not start from the
-first reasoning step alone.
+Removing the \texttt{question\_end} representation causes a clear collapse,
+confirming that local attribution should not start from the first reasoning
+step alone.
 The transition from the problem statement to the reasoning chain already
 contains information about how subsequent steps should be interpreted, so
 including \(x_{i,0}\) gives the local scorer a better boundary anchor.
-The ordered value difference \(\Delta v\) remains a useful deterministic
-reference, but the final method is built on IG-based attribution because it can
-be paired with an explicit consistency mechanism rather than used as a fixed
-prefix difference alone.
+The ordered value difference \(\Delta v\) is a useful deterministic reference,
+but the final method is built on IG-based attribution because it yields a
+smoother local signal that can be paired with an explicit consistency test
+rather than used as a fixed prefix difference alone.
 
 Panel B then asks how to denoise that IG-based local signal.
 Both consistency mechanisms substantially improve over using raw IG signs
@@ -69,7 +69,52 @@ current step changes the predicted value of the particular trajectory in which
 it appears.
 
 \subsection{Global Prior and Head Complementarity}
-We reserve a second targeted ablation table for the global branch and
-inference-time head complementarity.
-It will compare the local-only model, additional prior variants, and the full
-semantic prior once the remaining runs are available.
+Table~\ref{tab:ablation_global_complementarity} asks a different question:
+what does the global branch add beyond local credit, and does that gain come
+from semantic neighborhood structure rather than generic smoothing?
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.8pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{Targeted Ablation II: global prior and head complementarity on
+ProcessBench.
+Metrics are averaged over GSM8K, MATH, OLYMPIADBENCH, and OMNIMATH.
+``Local + random-neighbor'' replaces the semantic prior with a random-neighbor
+variant under the same local pipeline.}
+\label{tab:ablation_global_complementarity}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Variant} & \textbf{Avg Err} & \textbf{Avg Cor} & \textbf{Avg F1} \\
+\midrule
+Local full & 42.7 & \textbf{79.0} & 55.4 \\
+Local + random-neighbor & 43.8 & 74.6 & 55.2 \\
+Global only & 26.0 & 46.9 & 33.4 \\
+Full SPRM & \textbf{51.2} & 73.3 & \textbf{60.0} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The table shows that the global branch is complementary rather than
+substitutive.
+``Global only'' is much weaker than ``Local full'', which indicates that
+cross-trajectory regularities alone cannot replace trajectory-specific credit.
+At the same time, ``Full SPRM'' achieves the best average F1 by trading a
+modest
+drop in \textit{Cor} for a much larger gain in \textit{Err}, exactly the
+trade-off expected when global semantic priors suppress locally plausible but
+globally unreliable patterns.
+
+The random-neighbor control further shows that this gain does not come from
+adding an arbitrary smoothing branch.
+Replacing semantic retrieval with random neighbors slightly hurts both
+\textit{Cor} and overall F1 relative to ``Local full'', whereas the semantic
+global branch produces a much larger F1 gain.
+This interpretation is also supported by the auxiliary neighborhood diagnostic:
+the trajectory-mean \(\delta^{\mathrm{glo}}\) achieves an AUC of 0.856 against
+final reward, with Pearson correlations of 0.613 to trajectory reward and
+0.510 to step labels, while random-neighbor and reward-shuffle baselines are
+substantially weaker.
+Detailed distribution plots and case studies are deferred to
+Appendix~\ref{sec:appendix}.

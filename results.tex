@@ -52,32 +52,34 @@ different assumptions: explicit human annotation, Monte Carlo step labeling,
 and labels derived from final outcomes.
 Table~\ref{tab:baseline_supervision_compare} provides a compact comparison of
 whether each model relies on automatically constructed supervision and whether
-it explicitly incorporates causal reasoning.
+it avoids external annotation or evaluation pipelines.
 
 \begin{table}[t]
 \centering
-\small
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.05}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.96}
 \caption{Compact comparison of PRM baselines.
 ``Auto.'' indicates whether the model uses automatically constructed process
-supervision rather than human step annotation or curated labels.
-``Causal'' indicates whether the method explicitly models causal effects.}
+supervision.
+``No Ext.'' indicates whether supervision is derived without external
+annotators, judges, or curated intermediate labels.}
 \label{tab:baseline_supervision_compare}
-\begin{tabular}{p{0.56\columnwidth}cc}
+\begin{tabular}{@{}p{0.54\columnwidth}cc@{}}
 \toprule
-\textbf{Model} & \textbf{Auto.} & \textbf{Causal} \\
+\textbf{Model} & \textbf{Auto.} & \textbf{No Ext.} \\
 \midrule
 Qwen2.5-Math-7B-PRM800K & \(\times\) & \(\times\) \\
 ReasonEval-7B & \(\times\) & \(\times\) \\
 Math-Shepherd-7B & \checkmark & \(\times\) \\
 RLHFlow (DeepSeek / Mistral) & \checkmark & \(\times\) \\
-OVM-Qwen3-4B & \checkmark & \(\times\) \\
-PQM-DeepSeek-zeta4-7B & \checkmark & \(\times\) \\
+OVM-Qwen3-4B & \checkmark & \checkmark \\
+PQM-DeepSeek-zeta4-7B & \checkmark & \checkmark \\
 Skywork-PRM-7B & \(\times\) & \(\times\) \\
 SPRM-Qwen3-4B (ours) & \checkmark & \checkmark \\
 \bottomrule
 \end{tabular}
+\vspace{-0.6em}
 \end{table}
 
 \paragraph{Metrics}
