@@ -16,29 +16,39 @@ perform targeted ablations over the key SPRM mechanisms.
 \centering
 \scriptsize
 \tabtight
-\caption{Ablation I on ProcessBench (metrics averaged over GSM8K, MATH,
-OLYMPIADBENCH, and OMNIMATH).}
-\label{tab:ablation_local_consistency}
-\begin{tabular}{@{}p{0.44\columnwidth}*{3}{C{0.14\columnwidth}}@{}}
+\caption{ProcessBench ablations (metrics averaged over GSM8K, MATH,
+OLYMPIADBENCH, and OMNIMATH), grouped by local credit construction,
+consistency gating, global priors, and head mixing.}
+\label{tab:ablation_processbench}
+\begin{tabular}{@{}p{0.18\columnwidth}p{0.28\columnwidth}*{3}{C{0.12\columnwidth}}@{}}
 \toprule
-\textbf{Ablated setting} & \textbf{Err} & \textbf{Cor} & \textbf{F1} \\
+\textbf{Component} & \textbf{Ablated setting} & \textbf{Err} & \textbf{Cor} & \textbf{F1} \\
 \midrule
-\tabgroup{4}{Local credit signal}
-Delta only & 16.0 & 0.9 & 1.6 \\
-IG w/o q-end & 31.4 & 42.6 & 36.1 \\
-IG + q-end & \textbf{37.7} & \textbf{76.5} & \textbf{50.2} \\
+\multirow{3}{*}{\textbf{Local credit}} & Delta only & 16.0 & 0.9 & 1.6 \\
+& IG w/o q-end & 31.4 & 42.6 & 36.1 \\
+& IG + q-end & \textbf{37.7} & \textbf{76.5} & \textbf{50.2} \\
 \midrule
-\tabgroup{4}{Consistency gate}
-No gate & 37.7 & 76.5 & 50.2 \\
-LLM gate & \textbf{47.3} & 67.0 & \textbf{55.4} \\
-Causal gate & 42.7 & \textbf{79.0} & \textbf{55.4} \\
+\multirow{3}{*}{\textbf{Consistency gate}} & No gate & 37.7 & 76.5 & 50.2 \\
+& LLM gate & \textbf{47.3} & 67.0 & \textbf{55.4} \\
+& Causal gate & 42.7 & \textbf{79.0} & \textbf{55.4} \\
+\midrule
+\multirow{4}{*}{\textbf{Global prior}} & Local & 42.7 & \textbf{79.0} & 55.4 \\
+& Local + random & 43.8 & 74.6 & 55.2 \\
+& Global only & 26.0 & 46.9 & 33.4 \\
+& Local + global & \textbf{51.2} & 73.3 & \textbf{60.0} \\
+\midrule
+\multirow{5}{*}{\textbf{Head mixing}} & \((1.00, 0.00)\) & 42.7 & 79.0 & 55.4 \\
+& \((0.75, 0.25)\) & 40.9 & \textbf{83.1} & 54.7 \\
+& \((0.50, 0.50)\) & \textbf{51.2} & 73.3 & \textbf{60.0} \\
+& \((0.25, 0.75)\) & 34.3 & 60.6 & 43.8 \\
+& \((0.00, 1.00)\) & 26.0 & 46.9 & 33.4 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:ablation_local_consistency} reorganizes the ablation around two
-components: the local credit signal itself, and the consistency gate used to
-make that signal reliable enough to supervise the final PRM.
+Table~\ref{tab:ablation_processbench} reorganizes the ablation into four
+blocks: local credit construction, consistency gating, the global-prior
+branch, and head mixing.
 
 The local-credit rows first compare three ways of forming local credit.
 Using the degenerate ordered value difference alone as supervision causes an
@@ -83,49 +93,22 @@ while matching the LLM-based alternative on average F1.
 \FloatBarrier
 
 \subsection{Ablation II: Global Prior and Head Complementarity}
-Table~\ref{tab:ablation_global_complementarity} asks a different question:
-what does the global branch add beyond local credit, and does that gain come
-from semantic neighborhood structure rather than generic smoothing?
-
-\begin{table}[t]
-\centering
-\scriptsize
-\tabtight
-\caption{Ablation II on ProcessBench (metrics averaged over GSM8K, MATH,
-OLYMPIADBENCH, and OMNIMATH).}
-\label{tab:ablation_global_complementarity}
-\begin{tabular}{@{}p{0.44\columnwidth}*{3}{C{0.14\columnwidth}}@{}}
-\toprule
-\textbf{Ablated setting} & \textbf{Err} & \textbf{Cor} & \textbf{F1} \\
-\midrule
-\tabgroup{4}{Global prior branch}
-Local & 42.7 & \textbf{79.0} & 55.4 \\
-Local + random & 43.8 & 74.6 & 55.2 \\
-Global only & 26.0 & 46.9 & 33.4 \\
-Local + global & \textbf{51.2} & 73.3 & \textbf{60.0} \\
-\midrule
-\tabgroup{4}{Head mixing \((\lambda_{\mathrm{loc}},\lambda_{\mathrm{glo}})\)}
-\((1.00, 0.00)\) & 42.7 & 79.0 & 55.4 \\
-\((0.75, 0.25)\) & 40.9 & \textbf{83.1} & 54.7 \\
-\((0.50, 0.50)\) & \textbf{51.2} & 73.3 & \textbf{60.0} \\
-\((0.25, 0.75)\) & 34.3 & 60.6 & 43.8 \\
-\((0.00, 1.00)\) & 26.0 & 46.9 & 33.4 \\
-\bottomrule
-\end{tabular}
-\end{table}
+The last two blocks of Table~\ref{tab:ablation_processbench} ask a different
+question: what does the global branch add beyond local credit, and does that
+gain come from semantic neighborhood structure rather than generic smoothing?
 
 The global-prior rows show that the global branch is complementary rather than
 substitutive.
-``Global only'' is much weaker than ``Local only'', which indicates that
+``Global only'' is much weaker than ``Local'', which indicates that
 cross-trajectory regularities alone cannot replace trajectory-specific credit.
-At the same time, ``Full SPRM'' achieves the best average F1 by trading a
+At the same time, ``Local + global'' achieves the best average F1 by trading a
 modest drop in \textit{Cor} for a much larger gain in \textit{Err}, exactly
 the trade-off expected when global semantic priors suppress locally plausible
 but globally unreliable patterns.
 The random-neighbor control further shows that this gain does not come from
 adding an arbitrary smoothing branch:
 replacing semantic retrieval with random neighbors slightly hurts both
-\textit{Cor} and overall F1 relative to ``Local only'', whereas the semantic
+\textit{Cor} and overall F1 relative to ``Local'', whereas the semantic
 global branch produces a much larger F1 gain.
 
 The head-mixing rows then show that head complementarity is not an all-or-nothing effect.
