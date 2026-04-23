@@ -11,13 +11,6 @@ We compare SPRM against a range of open-source PRMs and LLM-as-a-Judge
 baselines.
 Results are reported in Table~\ref{tab:processbench_res}
 and Table~\ref{tab:prmbench_types_en}.
-Our main conclusion below is restricted to baseline PRMs in a comparable
-practical regime.
-Much larger judges or backbones are included as reference points rather than
-as like-for-like competitors.
-Among the baselines, OVM-Qwen3-4B is the most controlled comparison because it
-shares the Qwen3-4B backbone and also derives process supervision from final
-outcomes.
 
 \paragraph{Training Data}
 We train SPRM on Math-Shepherd trajectories \citep{wang2024math}.
@@ -236,9 +229,9 @@ each PRM, and report final-answer accuracy as a function of \(k\).
 & \cellcolor{TableBandGray} \textbf{76.5}
 & \cellcolor{TableBandGray} \textbf{50.2} \\
 \midrule
-\multirow{3}{*}{\textit{Cons.}} & No gate & 37.7 & 76.5 & 50.2 \\
-& LLM gate & \textbf{47.3} & 67.0 & \textbf{55.4} \\
-& \cellcolor{TableBandGray} Causal gate
+\multirow{3}{*}{\textit{Cons.}} & No consistency & 37.7 & 76.5 & 50.2 \\
+& LLM-consistency & \textbf{47.3} & 67.0 & \textbf{55.4} \\
+& \cellcolor{TableBandGray} \(R^{\mathrm{causal}}\)-consistency
 & \cellcolor{TableBandGray} 42.7
 & \cellcolor{TableBandGray} \textbf{79.0}
 & \cellcolor{TableBandGray} \textbf{55.4} \\
