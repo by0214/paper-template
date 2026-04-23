@@ -90,7 +90,15 @@ The results suggest that compressed step-level representations are necessary: BE
     \label{fig:input_feature_selection}
 \end{figure*}
 
-In this section, we investigate three key questions regarding the step representation $x_{i, t} \in \mathbb{R}^{d}$: which single hidden layer provides the optimal representation, how many layers should be combined, and whether prefix differencing is beneficial. To determine which layers best capture step semantics, we conduct linear-probe experiments by training the Final Reward Scorer on hidden states extracted from various layers. Furthermore, we train PRMs using varying numbers of hidden layers and evaluate the impact of differential versus raw inputs through qualitative case studies.
+In this section, we investigate three key questions regarding the step
+representation \(x_{i,t}\in\mathbb{R}^{d}\): which single hidden layer provides
+the optimal representation, how many layers should be combined, and whether
+prefix differencing is beneficial.
+To determine which layers best capture step semantics, we conduct linear-probe
+experiments by training the Final Reward Scorer on hidden states extracted from
+various layers.
+Furthermore, we train PRMs using varying numbers of hidden layers and evaluate
+the impact of differential versus raw inputs through qualitative case studies.
 
 As illustrated in Figure~\ref{fig:input_feature_selection}(a) and (b), linear-probe experiments reveal that representations from deeper layers (those closer to the output) are significantly more effective for Stage 1 trajectory-correctness prediction, with both AUC and log-loss converging to optimal levels in the final layers. Moreover, Figure~\ref{fig:input_feature_selection}(c) demonstrates that concatenating hidden states from multiple top layers yields no observable improvement in the downstream PRM F1 score. Consequently, we strictly utilize the single final-layer hidden state for step representation, maximizing computational efficiency without compromising performance.
 
@@ -100,36 +108,57 @@ illustrates an erroneous trajectory where a critical mistake occurs at Step 1. A
 \subsection{IG Baseline Selection}
 \label{ig_baseline_selection}
 To choose the IG baseline, we consider two options: (i) using the first-order
-forward-difference feature vector $x_{i,t-1}$ as the baseline for the current
+forward-difference feature vector \(x_{i,t-1}\) as the baseline for the current
 step, and (ii) using randomly initialized vectors as semantically empty
 baselines.
 
 The motivation for option (i) is to capture incremental step contribution.
-In this case, for input $X_i=[x_{i,0},\ldots,x_{i,T_i}]$, the baseline sequence
-is $X_{i}^{baseline}=[x_{i,-1}, x_{i,0}, \ldots, x_{i,T_i-1}]$, where
-$x_{i,-1}$ denotes a manually defined baseline for the \texttt{question\_end}
+In this case, for input \(X_i=[x_{i,0},\ldots,x_{i,T_i}]\), the baseline
+sequence is \(X_{i}^{\mathrm{baseline}}=[x_{i,-1}, x_{i,0}, \ldots, x_{i,T_i-1}]\),
+where \(x_{i,-1}\) denotes a manually defined baseline for the
+\texttt{question\_end}
 representation,
 interpreted as a semantically uninformative vector.
 IG completeness then gives:
 
 \begin{equation}
-\label{baseline_selection_delta}
-\sum_{t=0}^{T_i}\delta_{\text{local}}^{\mathrm{IG}}(s_{i,t})
+\label{eq:baseline_selection_delta}
+\sum_{t=0}^{T_i}\delta_{i,t}^{\mathrm{IG}}
 =
 F(x_{i,0}:x_{i, T_i}) - F(x_{i,-1}:x_{i, T_{i-1}}),
 \end{equation}
 
-In Stage 1, the objective is to predict trajectory score from step-level features, so $F(x_{i,-1}:x_{i, T_{i-1}})$ can be interpreted as the score prediction of a right-shifted trajectory. The resulting IG signal therefore attributes steps relative to this shifted context, which is semantically misaligned with our intended notion of stepwise marginal contribution. For this reason, we do not adopt option (i).
+In Stage 1, the objective is to predict trajectory score from step-level
+features, so \(F(x_{i,-1}:x_{i, T_{i-1}})\) can be interpreted as the score
+prediction of a right-shifted trajectory.
+The resulting IG signal therefore attributes steps relative to this shifted
+context, which is semantically misaligned with our intended notion of stepwise
+marginal contribution.
+For this reason, we do not adopt option (i).
 
 For option (ii), summing per-step IG signals gives:
 \begin{equation}
-\label{baseline_selection_zero}
-\sum_{t=0}^{T_{i}}\delta_{\text{local}}^{\mathrm{IG}}(s_{i,t}) 
+\label{eq:baseline_selection_zero}
+\sum_{t=0}^{T_i}\delta_{i,t}^{\mathrm{IG}}
 = 
-F(x_{i,0}:x_{i, T_i}) - F(x_{i,0}^{baseline}:x_{i, T_{i}}^{baseline}),
+F(x_{i,0}:x_{i, T_i}) - F(x_{i,0}^{\mathrm{baseline}}:x_{i, T_i}^{\mathrm{baseline}}),
 \end{equation}
 
-According to the IG definition, each step attribution reflects its contribution relative to the baseline prediction. In \citep{sundararajan2017axiomatic}, $x^{baseline}$ is set to the all-zero vector for image attribution, with the goal of using a minimally informative state to avoid biased attributions. In process-reward modeling with binary outcome signals ($0/1$), we define a minimally informative baseline as one producing near-neutral output, i.e., $F(X^{baseline})\approx0.5$, so that attribution signs directly indicate whether a step is beneficial or harmful. Comparing an all-zero baseline with random-noise baselines, we find that the all-zero baseline yields outputs stably close to $0.5$, whereas random baselines are less stable. We therefore adopt the all-zero baseline, which preserves completeness and the semantics of feature-level integrated gradients, and best matches the Aumann--Shapley perspective.
+According to the IG definition, each step attribution reflects its contribution
+relative to the baseline prediction.
+In \citep{sundararajan2017axiomatic}, \(x^{\mathrm{baseline}}\) is set to the
+all-zero vector for image attribution, with the goal of using a minimally
+informative state to avoid biased attributions.
+In process-reward modeling with binary outcome signals \((0/1)\), we define a
+minimally informative baseline as one producing near-neutral output, \ie,
+\(F(X^{\mathrm{baseline}})\approx 0.5\), so that attribution signs directly
+indicate whether a step is beneficial or harmful.
+Comparing an all-zero baseline with random-noise baselines, we find that the
+all-zero baseline yields outputs stably close to \(0.5\), whereas random
+baselines are less stable.
+We therefore adopt the all-zero baseline, which preserves completeness and the
+semantics of feature-level integrated gradients, and best matches the
+Aumann--Shapley perspective.
 
 
 \subsection{Global Delta Analysis}
@@ -152,10 +181,35 @@ According to the IG definition, each step attribution reflects its contribution 
 \label{fig:global_delta_analysis}
 \end{figure*}
 
-To empirically validate the efficacy of the proposed global signal $\delta_{\text{global}}$, we analyze its trajectory-level distribution and predictive capacity. Recall from our formulation that $\delta_{\text{global}}(s_{i,t})$ acts as a cross-trajectory empirical prior, approximating the relative success tendency of specific semantic patterns via nearest-neighbor voting. 
+To empirically validate the efficacy of the proposed global signal
+\(\delta_{i,t}^{\mathrm{glo}}\), we analyze its trajectory-level distribution
+and predictive capacity.
+Recall from our formulation that \(\delta_{i,t}^{\mathrm{glo}}\) acts as a
+cross-trajectory empirical prior, approximating the relative success tendency
+of specific semantic patterns via nearest-neighbor voting.
 
-Figure~\ref{fig:global_delta_analysis}(a) illustrates the distribution of the mean global signal—aggregated over all steps within an individual trajectory—stratified by the final episodic return ($n=2500$ for each group). The empirical distributions exhibit a clear and substantial separation. Successful trajectories are predominantly characterized by a positive mean $\delta_{\text{global}}$, whereas unsuccessful trajectories consistently yield negative values. This observation aligns seamlessly with our theoretical premise: state representations associated with successful outcomes reliably retrieve high-reward neighbors from the cross-trajectory candidate pool $\Omega$, confirming that $\delta_{\text{global}} > 0$ effectively encodes a higher-than-average propensity for success.
+Figure~\ref{fig:global_delta_analysis}(a) illustrates the distribution of the
+mean global signal, aggregated over all steps within an individual trajectory,
+stratified by the final episodic return, with \(n=2500\) for each group.
+The empirical distributions exhibit a clear and substantial separation.
+Successful trajectories are predominantly characterized by a positive mean
+\(\delta^{\mathrm{glo}}\), whereas unsuccessful trajectories consistently
+yield negative values.
+This observation aligns seamlessly with our theoretical premise: state
+representations associated with successful outcomes reliably retrieve
+high-reward neighbors from the cross-trajectory candidate pool \(\Omega\),
+confirming that \(\delta^{\mathrm{glo}} > 0\) effectively encodes a
+higher-than-average propensity for success.
 
-To rigorously quantify the discriminative power of this prior, Figure~\ref{fig:global_delta_analysis}(b) presents the Receiver Operating Characteristic (ROC) curve for predicting the binary final reward $r \in \{0, 1\}$ solely using the trajectory-mean $\delta_{\text{global}}$. The estimator achieves an Area Under the Curve (AUC) of 0.856, demonstrating strong predictive performance significantly above random chance. 
+To rigorously quantify the discriminative power of this prior,
+Figure~\ref{fig:global_delta_analysis}(b) presents the Receiver Operating
+Characteristic (ROC) curve for predicting the binary final reward
+\(r \in \{0, 1\}\) solely using the trajectory-mean \(\delta^{\mathrm{glo}}\).
+The estimator achieves an Area Under the Curve (AUC) of 0.856, demonstrating
+strong predictive performance significantly above random chance.
 
-Collectively, these results substantiate the utility of our non-parametric voting estimator. By surfacing robust, cross-sample statistical constraints, the global signal provides a highly discriminative empirical prior that complements the intra-trajectory marginal contributions ($\delta_{\text{local}}$).
+Collectively, these results substantiate the utility of our non-parametric
+voting estimator.
+By surfacing robust, cross-sample statistical constraints, the global signal
+provides a highly discriminative empirical prior that complements the
+intra-trajectory marginal contributions \(\delta_{i,t}^{\mathrm{loc}}\).

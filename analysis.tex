@@ -26,24 +26,32 @@ consistency gating, global priors, and head mixing.}
 \midrule
 \multirow{3}{*}{\textit{Local credit}} & Delta only & 16.0 & 0.9 & 1.6 \\
 & IG w/o q-end & 31.4 & 42.6 & 36.1 \\
-\rowcolor{TableBandGray}
-& IG + q-end & \textbf{37.7} & \textbf{76.5} & \textbf{50.2} \\
+& \cellcolor{TableBandGray} IG + q-end
+& \cellcolor{TableBandGray} \textbf{37.7}
+& \cellcolor{TableBandGray} \textbf{76.5}
+& \cellcolor{TableBandGray} \textbf{50.2} \\
 \midrule
 \multirow{3}{*}{\shortstack[c]{\textit{Consistency}\\\textit{gate}}} & No gate & 37.7 & 76.5 & 50.2 \\
 & LLM gate & \textbf{47.3} & 67.0 & \textbf{55.4} \\
-\rowcolor{TableBandGray}
-& Causal gate & 42.7 & \textbf{79.0} & \textbf{55.4} \\
+& \cellcolor{TableBandGray} Causal gate
+& \cellcolor{TableBandGray} 42.7
+& \cellcolor{TableBandGray} \textbf{79.0}
+& \cellcolor{TableBandGray} \textbf{55.4} \\
 \midrule
 \multirow{4}{*}{\textit{Global prior}} & Local & 42.7 & \textbf{79.0} & 55.4 \\
 & Local + random & 43.8 & 74.6 & 55.2 \\
 & Global only & 26.0 & 46.9 & 33.4 \\
-\rowcolor{TableBandGray}
-& Local + global & \textbf{51.2} & 73.3 & \textbf{60.0} \\
+& \cellcolor{TableBandGray} Local + global
+& \cellcolor{TableBandGray} \textbf{51.2}
+& \cellcolor{TableBandGray} 73.3
+& \cellcolor{TableBandGray} \textbf{60.0} \\
 \midrule
 \multirow{5}{*}{\textit{Head mixing}} & \((1.00, 0.00)\) & 42.7 & 79.0 & 55.4 \\
 & \((0.75, 0.25)\) & 40.9 & \textbf{83.1} & 54.7 \\
-\rowcolor{TableBandGray}
-& \((0.50, 0.50)\) & \textbf{51.2} & 73.3 & \textbf{60.0} \\
+& \cellcolor{TableBandGray} \((0.50, 0.50)\)
+& \cellcolor{TableBandGray} \textbf{51.2}
+& \cellcolor{TableBandGray} 73.3
+& \cellcolor{TableBandGray} \textbf{60.0} \\
 & \((0.25, 0.75)\) & 34.3 & 60.6 & 43.8 \\
 & \((0.00, 1.00)\) & 26.0 & 46.9 & 33.4 \\
 \bottomrule

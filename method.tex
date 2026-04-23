@@ -160,7 +160,7 @@ It can be trained directly from the step representations and the final reward:
 \mathbb{E}_{(\tau,r)\sim\mathcal{D}}
 \left[
 \mathrm{BCE}\!\left(F_{\theta_{\mathrm{scorer}}}(\mathrm{encoder}(\tau)),r\right)
-\right].
+\right],
 \end{equation}
 where \(\mathrm{BCE}(\cdot,\cdot)\) denotes the binary cross-entropy loss with
 binary target \(r\in\{0,1\}\).
@@ -358,7 +358,7 @@ m_{i,t}\,
 &\quad+
 \sum_{t=1}^{T_i}
 \mathrm{BCE}\!\left(\hat y_{i,t}^{\mathrm{glo}}, y_{i,t}^{\mathrm{glo}}\right)
-\Big].
+\Big],
 \end{align}
 where the local branch captures trajectory-specific contextual credit and the
 global branch injects a cross-trajectory semantic prior.
