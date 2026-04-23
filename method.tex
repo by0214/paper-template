@@ -17,16 +17,10 @@ SPRM distills both into a unified process reward model (PRM).
 \centering
 \includegraphics[width=\textwidth]{figures/overview-4-21.pdf}
 \caption{Overview of SPRM.
-Starting from outcome-only reasoning trajectories, we first encode the question
-and each reasoning step into vector representations.
-We then learn a trajectory-level scorer that turns sparse outcomes into a
-differentiable trajectory value function.
-On top of it, we build a local supervision signal via Aumann--Shapley
-attribution and pairwise counterfactual consistency, and a global supervision
-signal from semantic neighbor statistics across trajectories.
-Both are distilled into a dual-head process reward model, whose predictions are
-combined at inference time to produce the final
-step-level reward.}
+Starting from outcome-only reasoning trajectories, we train a differentiable
+trajectory scorer, construct local and global step signals, and distill them
+into a dual-head PRM whose predictions are combined at inference time to
+produce the final step-level reward.}
 \label{fig:sprm_overview}
 \end{figure*}
 
@@ -122,19 +116,12 @@ reward shaping term over prefix states and therefore preserves the optimal
 policy under the reward-transformation theorem of
 \citep{ng1999policy}.
 
-The two lemmas reveal both the appeal and the limitation of classical discrete
-Shapley here.
-The correct causal reference is the final trajectory reward, but once temporal
-order is fixed, discrete credit collapses to prefix-wise value differences.
-Although this preserves the optimal policy, it ignores step interactions and
-depends heavily on the value model.
-We retain the same fairness intuition but change the object of attribution.
-We treat the final reward as the value of the full trajectory, learn a
-lightweight differentiable scorer to approximate it, and then
-compute each step's local credits through gradient integration and a pairwise
-counterfactual consistency check, thereby preserving temporal structure,
-capturing both marginal contribution and step interaction, and deriving
-supervision directly from outcome-only data without any external judge.
+These lemmas show that while degenerate value differences preserve the optimal
+policy, they ignore step interactions and depend heavily on the value model.
+We therefore keep the same fairness intuition but replace discrete differences
+with a lightweight trajectory scorer, IG-based marginal attribution, and
+pairwise causal filtering to derive stronger local supervision from
+outcome-only data.
 
 For each trajectory, we encode the question and all reasoning steps into
 \(
@@ -195,77 +182,64 @@ F_{\theta_{\mathrm{scorer}}^\star}\!\left(\gamma_i(\alpha)\right)
 \qquad
 t\in\{1,\ldots,T_i\}.
 \end{equation}
-This IG-based measure is equivalent to the Aumann--Shapley value\citep{sundararajan2017axiomatic}.
+This IG-based measure is equivalent to the Aumann--Shapley
+value\citep{sundararajan2017axiomatic}.
 Unlike ordered prefix differences, it remains sensitive to the full inference
 chain and yields smoother marginal estimates.
-Reliable local credit should also reflect step interactions under causal
-constraints, which we formalize with two counterfactual assumptions.
-First, if a step is beneficial, removing it should decrease predicted
-trajectory value; if it is ineffective or harmful, removing it should increase
-that value.
-Second, if two steps exhibit positive causal synergy, removing them together
-should reduce value more than removing either alone, and vice versa.
-We therefore build a discrete pairwise consistency check on top of the same
-scorer.
-Following prior work\citep{zheng2025processbench, wang2025athena}, this
-mechanism tests whether the sign of IG-based attribution is supported by paired
-counterfactual perturbations; we later use it in \Cref{sec:method_prm} to
-filter unreliable local supervision.
+At the same time, following recent consistency-based approaches
+\citep{zheng2025processbench, wang2025athena}, we introduce a pairwise
+counterfactual causal-consistency mechanism and later use it in
+\Cref{sec:method_prm} to filter unreliable local supervision.
 
 Let \(X_i^{(-t)}\) be the sequence obtained by replacing only \(x_{i,t}\) with
 the baseline vector \(b\), and let \(X_i^{(-t,-u)}\) replace both \(x_{i,t}\)
 and \(x_{i,u}\) with \(b\).
-The resulting direct removal effect of step \(t\) is
-\begin{equation}
+\begin{align}
 \label{eq:direct_counterfactual}
 R_{i,t}^{\mathrm{dir}}
-=
+&=
 F_{\theta_{\mathrm{scorer}}^\star}(X_i)
 -
-F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t)}).
-\end{equation}
-To model pairwise causal coordination, we restrict explicit interaction checks
-to an ordered local window \(\mathcal{W}(t)=\{u \mid 1 \le u < t,\; t-u \le w\}\),
-and define the interaction effect of a pair of steps \(t\) and \(u\) as
-\begin{equation}
+F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t)}), \\
 \label{eq:pairwise_interaction}
-R_{i,t,u}^{\mathrm{int}}
-=
+R_{i,(t,u)}^{\mathrm{int}}
+&=
 F_{\theta_{\mathrm{scorer}}^\star}(X_i)
 -
 F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t)})
 -
 F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-u)})
 +
-F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t,-u)}),
-\end{equation}
-We focus on pairwise causal relations, using them as a tractable proxy for
-longer-range dependencies.
-We then construct deterministic interaction weights
-\begin{equation}
-\label{eq:pairwise_weight}
-\bar g_{i,t,u}
-=
-\frac{\mathbf{1}(u\in\mathcal{W}(t))\max(R_{i,t,u}^{\mathrm{int}},0)}
-{\sum_{v\in\mathcal{W}(t)} \max(R_{i,t,v}^{\mathrm{int}},0)+\epsilon},
-\end{equation}
-which place more mass on neighbors with stronger positive interaction.
-Since incorrect information often propagates from early steps, while crucial
-causal logic is concentrated in a few key transitions
-\citep{yang2025beyond, DBLP:conf/iclr/LiL25a}, this weighting emphasizes the
-most informative local interactions.
-Then we define the interaction-enhanced causal score as
+F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t,-u)}).
+\end{align}
+These counterfactual perturbations capture causality by masking steps and
+measuring the resulting value change: \(R_{i,t}^{\mathrm{dir}}\) measures the
+effect of invalidating one step, while \(R_{i,(t,u)}^{\mathrm{int}}\) measures
+their joint effect.
+To obtain a reliable consistency signal, we aggregate pairwise interactions
+within an ordered local window \(\mathcal{W}(t)=\{u \mid 1 \le u < t,\; t-u \le w\}\)
+and define
 \begin{equation}
 \label{eq:pairwise_counterfactual}
 R_{i,t}^{\mathrm{causal}}
 =
 R_{i,t}^{\mathrm{dir}}
 +
-\beta\sum_{u\in\mathcal{W}(t)} \bar g_{i,t,u} R_{i,t,u}^{\mathrm{int}},
+\beta
+\frac{
+\sum_{u\in\mathcal{W}(t)} \max\!\big(0, R_{i,(t,u)}^{\mathrm{int}}\big)\,
+R_{i,(t,u)}^{\mathrm{int}}
+}{
+\sum_{u\in\mathcal{W}(t)} \max\!\big(0, R_{i,(t,u)}^{\mathrm{int}}\big)
++ \epsilon
+},
 \end{equation}
 where \(\beta\) controls the strength of the pairwise correction.
-Although \(R_{i,t}^{\mathrm{causal}}\) is built from counterfactual ablations,
-it remains only a coarse reliability signal.
+This emphasizes positively synergistic pairs: erroneous steps tend to propagate
+and are therefore discarded, while key logical transitions are sparse and thus
+highlighted by \(\max(0,\cdot)\).
+Although pairwise checks are local, via logical transitivity they also provide a
+tractable proxy for longer-range dependencies.
 The local branch still uses \(\delta_{i,t}^{\mathrm{loc}}\) as its primary
 contextual supervision, while \(R_{i,t}^{\mathrm{causal}}\) only decides
 whether that supervision is reliable enough to keep.
