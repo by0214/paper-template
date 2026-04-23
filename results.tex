@@ -213,14 +213,64 @@ each PRM, and report final-answer accuracy as a function of \(k\).
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.98\textwidth]{bon_prm_grid.pdf}
-\caption{Best-of-\(N\) inference with different PRMs.
+\begin{minipage}[t]{0.43\textwidth}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{0.9}
+\captionof{table}{ProcessBench ablations, averaged over GSM8K, MATH,
+OLYMPIADBENCH, and OMNIMATH.}
+\label{tab:ablation_processbench}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}p{0.18\columnwidth}p{0.27\columnwidth}!{\color{black!35}\vrule width 0.5pt}*{3}{C{0.12\columnwidth}}@{}}
+\toprule
+\textbf{Comp.} & \textbf{Setting} & \textbf{Err} & \textbf{Cor} & \textbf{F1} \\
+\midrule
+\multirow{3}{*}{\textit{Local}} & Delta only & 16.0 & 0.9 & 1.6 \\
+& IG w/o q-end & 31.4 & 42.6 & 36.1 \\
+& \cellcolor{TableBandGray} IG + q-end
+& \cellcolor{TableBandGray} \textbf{37.7}
+& \cellcolor{TableBandGray} \textbf{76.5}
+& \cellcolor{TableBandGray} \textbf{50.2} \\
+\midrule
+\multirow{3}{*}{\textit{Cons.}} & No gate & 37.7 & 76.5 & 50.2 \\
+& LLM gate & \textbf{47.3} & 67.0 & \textbf{55.4} \\
+& \cellcolor{TableBandGray} Causal gate
+& \cellcolor{TableBandGray} 42.7
+& \cellcolor{TableBandGray} \textbf{79.0}
+& \cellcolor{TableBandGray} \textbf{55.4} \\
+\midrule
+\multirow{4}{*}{\textit{Global}} & Local & 42.7 & \textbf{79.0} & 55.4 \\
+& Local + random & 43.8 & 74.6 & 55.2 \\
+& Global only & 26.0 & 46.9 & 33.4 \\
+& \cellcolor{TableBandGray} Local + global
+& \cellcolor{TableBandGray} \textbf{51.2}
+& \cellcolor{TableBandGray} 73.3
+& \cellcolor{TableBandGray} \textbf{60.0} \\
+\midrule
+\multirow{5}{*}{\textit{Mix}} & \((1.00, 0.00)\) & 42.7 & 79.0 & 55.4 \\
+& \((0.75, 0.25)\) & 40.9 & \textbf{83.1} & 54.7 \\
+& \cellcolor{TableBandGray} \((0.50, 0.50)\)
+& \cellcolor{TableBandGray} \textbf{51.2}
+& \cellcolor{TableBandGray} 73.3
+& \cellcolor{TableBandGray} \textbf{60.0} \\
+& \((0.25, 0.75)\) & 34.3 & 60.6 & 43.8 \\
+& \((0.00, 1.00)\) & 26.0 & 46.9 & 33.4 \\
+\bottomrule
+\end{tabular}%
+}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.55\textwidth}
+\centering
+\includegraphics[width=\linewidth]{bon_prm_grid.pdf}
+\captionof{figure}{Best-of-\(N\) inference with different PRMs.
 Each subplot reports accuracy as a function of \(k\) on one dataset.
 For each PRM, we evaluate both \texttt{min} and \texttt{mean} aggregation and
 plot the better averaged accuracy at each \(k\).
 Candidate trajectories are subsampled with 10 fixed random seeds, and all
 reported accuracies are averaged over the resulting reranking runs.}
 \label{fig:bon_prm_grid}
+\end{minipage}
 \end{figure*}
 
 \Cref{fig:bon_prm_grid} reports the better of the \texttt{min} and

@@ -116,8 +116,9 @@ reward shaping term over prefix states and therefore preserves the optimal
 policy under the reward-transformation theorem of
 \citep{ng1999policy}.
 
-These lemmas show that while degenerate value differences preserve the optimal
-policy, they ignore step interactions and depend heavily on the value model.
+These lemmas indicate that directly applying Shapley values to temporally ordered trajectories 
+fails to address the limitations of sparse rewards, 
+while introducing a strong dependence on the choice of value model.
 We therefore keep the same fairness intuition but replace discrete differences
 with a lightweight trajectory scorer, IG-based marginal attribution, and
 pairwise causal filtering to derive stronger local supervision from
