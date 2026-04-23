@@ -1,20 +1,16 @@
 \section{Method}
 
-We seek to learn step-level process supervision from reasoning trajectories that
-only come with final outcome rewards.
-The core difficulty is that the observed reward is defined on the full
-trajectory rather than on individual steps.
-Our solution is to construct two complementary supervision signals from the
-trajectory data itself.
-The first is the \emph{contextual contribution} of a step, \ie whether that
-step helps or hurts the predicted outcome of the particular trajectory in which
-it appears.
-The second is the \emph{intrinsic value} of a reasoning pattern, \ie whether
-that kind of step tends to correlate with successful reasoning across
+We learn step-level process supervision from reasoning trajectories with only
+final outcome rewards.
+The challenge is that reward is observed on the full trajectory rather than on
+individual steps.
+SPRM therefore constructs two complementary signals from the trajectory data
+itself: the \emph{contextual contribution} of a step, \ie whether it helps or
+hurts the predicted outcome of its trajectory, and the \emph{intrinsic value}
+of a reasoning pattern, \ie whether it tends to correlate with success across
 trajectories.
-These two views capture complementary aspects of process supervision:
-one is trajectory-specific and causally grounded, while the other is
-cross-trajectory and distributional.
+The former is trajectory-specific and causal; the latter is cross-trajectory
+and distributional.
 SPRM distills both into a unified process reward model (PRM).
 
 \begin{figure*}[t]
@@ -23,30 +19,27 @@ SPRM distills both into a unified process reward model (PRM).
 \caption{Overview of SPRM.
 Starting from outcome-only reasoning trajectories, we first encode the question
 and each reasoning step into vector representations.
-We then learn a trajectory-level scorer that turns sparse outcome supervision
-into a differentiable trajectory value function.
-On top of this value function, we construct a local supervision signal through
-Aumann--Shapley attribution and a pairwise counterfactual consistency check,
-while a global supervision signal is constructed from semantic neighbor
-statistics across trajectories.
-Both signals are finally distilled into a dual-head process reward model,
-whose predictions are combined at inference time to produce the final
+We then learn a trajectory-level scorer that turns sparse outcomes into a
+differentiable trajectory value function.
+On top of it, we build a local supervision signal via Aumann--Shapley
+attribution and pairwise counterfactual consistency, and a global supervision
+signal from semantic neighbor statistics across trajectories.
+Both are distilled into a dual-head process reward model, whose predictions are
+combined at inference time to produce the final
 step-level reward.}
 \label{fig:sprm_overview}
 \end{figure*}
 
-Figure~\ref{fig:sprm_overview} provides the roadmap for the two supervision
-channels in SPRM.
-The local channel asks how to define the contextual value of a step under
-temporal and causal constraints, while the global channel asks whether a
-reasoning pattern tends to be useful across trajectories.
+Figure~\ref{fig:sprm_overview} summarizes the two supervision channels in SPRM.
+The local channel defines step value under temporal and causal constraints,
+while the global channel estimates whether a reasoning pattern is useful across
+trajectories.
 
 \subsection{Local Step Credit from Outcome-Only Trajectories}
 \label{sec:method_local}
 
 To construct trajectory-specific local credit from outcome-only rewards, we
-start from the most natural credit-assignment reference point: a cooperative
-game over reasoning steps.
+start from a cooperative game over reasoning steps.
 Consider a dataset
 \(
 \mathcal{D}=\{(\tau_i,r_i)\}_{i=1}^{N}
@@ -77,8 +70,8 @@ v\!\big(\mathrm{Pre}_{\pi}(s_{i,t})\big)
 where \(\Pi(\mathcal{N}_i)\) is the set of all permutations of
 \(\mathcal{N}_i\), and \(\mathrm{Pre}_{\pi}(s_{i,t})\) denotes the predecessors of
 step \(t\) under permutation \(\pi\).
-This quantity measures the expected marginal contribution of a step over all
-possible insertion orders \citep{shapley1953value,pmlr-v119-sundararajan20b}.
+This is the expected marginal contribution of a step over all admissible
+insertion orders \citep{shapley1953value,pmlr-v119-sundararajan20b}.
 
 However, reasoning trajectories are temporally ordered and causally
 constrained, so arbitrary permutations are not admissible.
@@ -129,44 +122,38 @@ reward shaping term over prefix states and therefore preserves the optimal
 policy under the reward-transformation theorem of
 \citep{ng1999policy}.
 
-The two lemmas clarify both the appeal and the limitation of
-classical discrete Shapley in our setting.
-They tell us that the right causal reference relies on the final reward of the trajectory,
-but once the temporal order is fixed, the discrete credit reduces to a
-prefix-wise value difference.
-While it can converge to the same optimal policy as sparse rewards, 
-the credit generated by value difference ignores the interactions between steps,
-and its strong dependence on the value model still limits further improvements in PRM capabilities.
-Our solution follows the same fairness intuition, but changes
-the object on which credit is calculated.
-We treat the final reward as the value of the full reasoning trajectory, learn a
-lightweight differentiable scorer to approximate that trajectory value, and then
+The two lemmas reveal both the appeal and the limitation of classical discrete
+Shapley here.
+The correct causal reference is the final trajectory reward, but once temporal
+order is fixed, discrete credit collapses to prefix-wise value differences.
+Although this preserves the optimal policy, it ignores step interactions and
+depends heavily on the value model.
+We retain the same fairness intuition but change the object of attribution.
+We treat the final reward as the value of the full trajectory, learn a
+lightweight differentiable scorer to approximate it, and then
 compute each step's local credits through gradient integration and a pairwise
 counterfactual consistency check, thereby preserving temporal structure,
 capturing both marginal contribution and step interaction, and deriving
 supervision directly from outcome-only data without any external judge.
 
-For each trajectory, we encode the question and all reasoning steps
-into a matrix
+For each trajectory, we encode the question and all reasoning steps into
 \(
 X_i=[x_{i,0},x_{i,1},\ldots,x_{i,T_i}]
 \in\mathbb{R}^{(T_i+1)\times d},
 \)
 where \(x_{i,0}\in\mathbb{R}^{d}\) is the representation of question \(q_i\),
-which we call it \textit{question\_end} in the following and
-\(x_{i,t}\in\mathbb{R}^{d}\) is the representation of step
-\(s_{i,t}\).
-These representations are produced by an encoder with sufficient semantic
-capacity, which can be an embedding model or a LLM backbone.
+which we denote as \textit{question\_end}, and
+\(x_{i,t}\in\mathbb{R}^{d}\) is the representation of step \(s_{i,t}\).
+These representations are produced by an encoder, such as an embedding model
+or LLM backbone.
 
 On top of these representations, we learn a lightweight trajectory scorer
 \(F_{\theta_{\mathrm{scorer}}}:\mathbb{R}^{(T_i+1)\times d}\rightarrow[0,1]\)
 from scratch on \(\mathcal{D}\) and use it as a learnable approximation to
 \(v\).
-Its role is to provide a differentiable trajectory value model on which step marginal contribution
-can be defined, rather than to act as an external judge.
-The scorer is trained directly from the step representations and the final
-reward:
+Its role is to provide a differentiable trajectory value model on which step
+marginal contribution can be defined, rather than to act as an external judge.
+The scorer is trained directly from step representations and final reward:
 \begin{equation}
 \label{eq:stage1_objective}
 \theta_{\mathrm{scorer}}^\star
@@ -180,12 +167,12 @@ reward:
 where \(\mathrm{BCE}(\cdot,\cdot)\) denotes the binary cross-entropy loss with
 binary target \(r\in\{0,1\}\).
 
-\(F_{\theta_{\mathrm{scorer}}^\star}\) gives us a smooth
-trajectory value surface from which we can compute marginal contribution for each step.
-We view the improvement or suppression of the final reward by the step's features 
-as the step's contribution to the current reasoning trajectory.
-Gradient integration\citep{sundararajan2017axiomatic} provides a natural way to quantify this contribution, 
-by integrating gradients along a path from a semantically uninformative baseline 
+\(F_{\theta_{\mathrm{scorer}}^\star}\) yields a smooth trajectory value surface
+from which we compute each step's marginal contribution.
+We interpret how a step's features raise or lower predicted reward as its
+contribution to the current trajectory.
+Gradient integration\citep{sundararajan2017axiomatic} quantifies this by
+integrating gradients along a path from a semantically uninformative baseline
 to the observed representation.
 Let \(b\in\mathbb{R}^{d}\) be a semantically uninformative baseline vector, and
 let \(B_i=[b,\ldots,b]\) be the corresponding baseline sequence with the same
@@ -208,23 +195,22 @@ F_{\theta_{\mathrm{scorer}}^\star}\!\left(\gamma_i(\alpha)\right)
 \qquad
 t\in\{1,\ldots,T_i\}.
 \end{equation}
-This IG-based marginal contribution measure is equivalent to the Aumann-Shapley value. 
-Compared to ordered prefix value differences, 
-it remains sensitive to the complete inference chain 
-and can estimate marginal contributions more smoothly.Furthermore, 
-reliable local credit should also consider the interactions and causal constraints 
-between steps. We formalize this with two counterfactual assumptions:
-First, if a step is beneficial, removing it should decrease the predicted trajectory's value; 
-if it is ineffective or harmful, removing it should increase the value.
-Second, if two steps exhibit a positive causal synergy, 
-then simultaneously removing them should produce a greater decrease in the value 
-than removing either step alone, and vice versa.
-Based on these assumptions, we construct a discrete pairwise consistency check on top of
-the same scorer.
-Following previous work\citep{zheng2025processbench, wang2025athena}, 
-we utilize a consistency mechanism to examine 
-whether the sign of IG-based attribution is supported by paired counterfactual perturbations, 
-which we will later use in \Cref{sec:method_prm} to filter unreliable local supervision.
+This IG-based measure is equivalent to the Aumann--Shapley value\citep{sundararajan2017axiomatic}.
+Unlike ordered prefix differences, it remains sensitive to the full inference
+chain and yields smoother marginal estimates.
+Reliable local credit should also reflect step interactions under causal
+constraints, which we formalize with two counterfactual assumptions.
+First, if a step is beneficial, removing it should decrease predicted
+trajectory value; if it is ineffective or harmful, removing it should increase
+that value.
+Second, if two steps exhibit positive causal synergy, removing them together
+should reduce value more than removing either alone, and vice versa.
+We therefore build a discrete pairwise consistency check on top of the same
+scorer.
+Following prior work\citep{zheng2025processbench, wang2025athena}, this
+mechanism tests whether the sign of IG-based attribution is supported by paired
+counterfactual perturbations; we later use it in \Cref{sec:method_prm} to
+filter unreliable local supervision.
 
 Let \(X_i^{(-t)}\) be the sequence obtained by replacing only \(x_{i,t}\) with
 the baseline vector \(b\), and let \(X_i^{(-t,-u)}\) replace both \(x_{i,t}\)
@@ -238,7 +224,7 @@ F_{\theta_{\mathrm{scorer}}^\star}(X_i)
 -
 F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t)}).
 \end{equation}
-To model pairwise causal coordination, we restrict explicit interaction checks 
+To model pairwise causal coordination, we restrict explicit interaction checks
 to an ordered local window \(\mathcal{W}(t)=\{u \mid 1 \le u < t,\; t-u \le w\}\),
 and define the interaction effect of a pair of steps \(t\) and \(u\) as
 \begin{equation}
@@ -253,8 +239,8 @@ F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-u)})
 +
 F_{\theta_{\mathrm{scorer}}^\star}(X_i^{(-t,-u)}),
 \end{equation}
-We only need to check pairwise causal relationships, 
-because long-chain dependencies can be captured by pairwise checks.
+We focus on pairwise causal relations, using them as a tractable proxy for
+longer-range dependencies.
 We then construct deterministic interaction weights
 \begin{equation}
 \label{eq:pairwise_weight}
@@ -263,10 +249,11 @@ We then construct deterministic interaction weights
 \frac{\mathbf{1}(u\in\mathcal{W}(t))\max(R_{i,t,u}^{\mathrm{int}},0)}
 {\sum_{v\in\mathcal{W}(t)} \max(R_{i,t,v}^{\mathrm{int}},0)+\epsilon},
 \end{equation}
-which places more mass on neighbors with stronger positive interaction, 
-because incorrect information tends to propagate along initial steps\citep{yang2025beyond, DBLP:conf/iclr/LiL25a}, 
-while critical causal logic tends to appear in fewer key steps, 
-we hope to capture the key logical interactions in causal reasoning.
+which place more mass on neighbors with stronger positive interaction.
+Since incorrect information often propagates from early steps, while crucial
+causal logic is concentrated in a few key transitions
+\citep{yang2025beyond, DBLP:conf/iclr/LiL25a}, this weighting emphasizes the
+most informative local interactions.
 Then we define the interaction-enhanced causal score as
 \begin{equation}
 \label{eq:pairwise_counterfactual}
@@ -279,22 +266,22 @@ R_{i,t}^{\mathrm{dir}}
 where \(\beta\) controls the strength of the pairwise correction.
 Although \(R_{i,t}^{\mathrm{causal}}\) is built from counterfactual ablations,
 it remains only a coarse reliability signal.
-The local branch still takes \(\delta_{i,t}^{\mathrm{loc}}\) as its primary
-contextual supervision, while \(R_{i,t}^{\mathrm{causal}}\) is used only to
-check whether that supervision is trustworthy enough to keep.
+The local branch still uses \(\delta_{i,t}^{\mathrm{loc}}\) as its primary
+contextual supervision, while \(R_{i,t}^{\mathrm{causal}}\) only decides
+whether that supervision is reliable enough to keep.
 
 \subsection{Global Semantic Prior}
 \label{sec:method_global}
 
 The global branch targets a different quantity: the \emph{intrinsic value} of a
-reasoning pattern across trajectories, namely whether that pattern tends to
-correlate with successful reasoning beyond a single rollout.
+reasoning pattern across trajectories, \ie whether it correlates with success
+beyond a single rollout.
 A step that is correct in itself can still appear inside an unsuccessful
 trajectory, for example when it follows a mistaken earlier conclusion and is
 therefore embedded in an incorrect reasoning chain.
-The goal of the global branch is to estimate this intrinsic step value across
-contexts, so that the reward signal becomes less sensitive to trajectory-local
-contextual variation and therefore more stable.
+The goal is to estimate this intrinsic step value across contexts, making the
+reward signal less sensitive to trajectory-local variation and hence more
+stable.
 For this reason, the global branch does not follow the same ordered credit
 logic as the local branch.
 
@@ -326,14 +313,14 @@ we obtain the global supervision signal
 \hat r_{i,t}-\bar r.
 \end{equation}
 This quantity measures whether the semantic neighborhood of \(x_{i,t}\) is more
-or less associated with success than the dataset average, and provides a stable
+or less associated with success than the dataset average, providing a stable
 complement to the trajectory-specific local signal.
 
 \subsection{Training the PRM and Inference}
 \label{sec:method_prm}
 
-The local and global signals above are used to supervise the final PRM at the
-positions corresponding to reasoning steps.
+The local and global signals above supervise the final PRM at reasoning-step
+positions.
 The PRM reads the same boundary-augmented sequence and uses a shared backbone
 with two task-specific heads, jointly parameterized by
 \(\theta_{\mathrm{PRM}}\).
@@ -347,7 +334,7 @@ y_{i,t}^{\mathrm{loc}}=\mathbf{1}\!\left(\delta_{i,t}^{\mathrm{loc}}>0\right),
 y_{i,t}^{\mathrm{glo}}=\mathbf{1}\!\left(\delta_{i,t}^{\mathrm{glo}}>0\right).
 \]
 
-For the local head, we only trust supervision when the IG-based local credit
+For the local head, we trust supervision only when the IG-based local credit
 and the pairwise counterfactual consistency check agree on the sign of the step
 effect.
 We therefore define the consistency mask
@@ -378,8 +365,8 @@ m_{i,t}\,
 \end{align}
 where the local branch captures trajectory-specific contextual credit and the
 global branch injects a cross-trajectory semantic prior.
-Because the two heads are trained jointly with a shared backbone, we do not
-introduce an explicit mixing weight in the training loss.
+Because the two heads are trained jointly with a shared backbone, we introduce
+no explicit mixing weight in the training loss.
 
 At inference time, we combine the two heads as
 \[
@@ -389,7 +376,7 @@ At inference time, we combine the two heads as
 +
 (1-\lambda)\hat y_{i,t}^{\mathrm{glo}},
 \]
-where \(\lambda\in[0,1]\) controls the trade-off between the local and global
-heads at inference time.
+where \(\lambda\in[0,1]\) controls the local-global trade-off at inference
+time.
 The resulting score balances local causal evidence with global semantic
 regularity and serves as the final step-level reward.
