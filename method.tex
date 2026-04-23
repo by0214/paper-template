@@ -141,13 +141,10 @@ Our solution follows the same fairness intuition, but changes
 the object on which credit is calculated.
 We treat the final reward as the value of the full reasoning trajectory, learn a
 lightweight differentiable scorer to approximate that trajectory value, and then
-compute each step's local credits through gradient integration and a pairwise counterfactual consistency check.
-This design has three advantages.
-\begin{enumerate}
-\item It preserves temporal structure and provides a global perspective to generate local credits.
-\item It combines the marginal contribution and step interactions to provide fine-grained local credits.
-\item It derives supervision directly from outcome-only data without relying on any external judge.
-\end{enumerate}
+compute each step's local credits through gradient integration and a pairwise
+counterfactual consistency check, thereby preserving temporal structure,
+capturing both marginal contribution and step interaction, and deriving
+supervision directly from outcome-only data without any external judge.
 
 For each trajectory, we encode the question and all reasoning steps
 into a matrix

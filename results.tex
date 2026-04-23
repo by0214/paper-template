@@ -28,38 +28,13 @@ and derive step-level supervision automatically from the trajectories
 themselves together with outcome signals.
 
 \paragraph{Baselines}
-We compare with representative publicly available PRMs that differ in how they
-construct process-level supervision:
+We compare with representative publicly available PRMs spanning human-annotated
+supervision (Qwen2.5-Math-7B-PRM800K and ReasonEval-7B), Monte Carlo labels
+(Math-Shepherd-7B and RLHFlow), outcome-reward broadcasting
+(OVM-Qwen3-4B), first-error boundary modeling
+(PQM-DeepSeek-zeta4-7B), and curated process supervision
+(Skywork-PRM-7B).
 
-\begin{itemize}
-    \item \textbf{Human-annotated supervision}:
-    Qwen2.5-Math-7B-PRM800K is fine-tuned on
-    PRM800K with Qwen2.5-Math-7B-Instruct,
-    and ReasonEval-7B is trained on human annotations
-    emphasizing step validity and redundancy.
-    \item \textbf{MC-based supervision}:
-    Math-Shepherd-7B is trained with MC-annotated data;
-    RLHFlow-DeepSeek-8B and RLHFlow-Mistral-8B use
-    MC-style process supervision with a different training formulation.
-    \item \textbf{Outcome-reward broadcasting}:
-    OVM-Qwen3-4B models process-label statistics
-    by broadcasting final rewards.
-    We reproduce this baseline using its open-source training framework with
-    Qwen3-4B-Instruct-2507 as the backbone.
-    \item \textbf{First-error boundary modeling}:
-    PQM-DeepSeek-7B-zeta4 models first-error
-    boundaries with a ranking loss.
-    \item \textbf{Curated process supervision}:
-    Skywork-PRM-7B integrates o1-style deliberate reasoning
-    strategies and is trained from Qwen2.5-7B-Math-Instruct.
-\end{itemize}
-
-These baselines cover representative paradigms for process supervision under
-different assumptions: explicit human annotation, Monte Carlo step labeling,
-and labels derived from final outcomes.
-Accordingly, when we discuss the main experimental takeaway, we focus on the
-matched baseline-PRM comparison and use the larger models mainly as external
-reference points.
 Table~\ref{tab:baseline_supervision_compare} provides a compact comparison of
 whether each model relies on automatically constructed supervision and whether
 it avoids external annotation or evaluation pipelines.
@@ -98,37 +73,14 @@ logical and semantic validity, and responsiveness to degraded or perturbed
 trajectories; we report both category scores and the official overall score.
 
 \paragraph{Implementation Details}
-Our framework is implemented with three corresponding components.
-Unless otherwise stated, we use Qwen3-4B-Instruct-2507 as the backbone.
-
-\textbf{Trajectory scorer training}
-We randomly sample 220K trajectories from Math-Shepherd and use the backbone to
-extract final-layer hidden states.
-We train a single-layer BiLSTM with batch size 128 and learning rate
-\(1\times10^{-4}\), with early stopping (patience 5).
-The data are split into train/validation/test with a ratio of
-\(0.8/0.1/0.1\).
-
-\textbf{Step-level attribution construction}
-We compute step-level attribution signals using Integrated Gradients with
-64 integration steps.
-The IG target is the trajectory scorer logit.
-For each step, we additionally compute a causal ablation score by replacing the
-step feature with a baseline vector and measuring the score change.
-The global prior is estimated through cross-trajectory semantic nearest-neighbor
-retrieval.
-We use Faiss \citep{douze2024faiss} with an IVF4096\_HNSW32,Flat index for
-approximate search.
-From a search pool of 400 trajectories, we retrieve the top 50 neighbors and
-compute similarity-weighted reward statistics using ReLU-based weights.
-
-\textbf{PRM training}
-The constructed step-level signals are used to train the final process reward
-model.
-We perform LoRA fine-tuning on the backbone with a maximum context length of
-4096.
-Training runs for 1 epoch with learning rate \(5\times10^{-5}\) and global
-batch size 32.
+Our framework consists of a trajectory scorer, step-level attribution
+construction, and PRM training, all built on Qwen3-4B-Instruct-2507 unless
+otherwise stated.
+We keep the main text to the details needed to interpret the results and defer
+the full training, attribution, and retrieval configuration to
+Appendix~\ref{sec:appendix_impl_details}, including data split, batch size,
+learning rates, epoch count, IG integration steps, and Faiss retrieval
+hyperparameters.
 
 \FloatBarrier
 

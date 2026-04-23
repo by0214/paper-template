@@ -44,6 +44,41 @@ Hence a PRM trained on the optimal value-difference reward induces the same
 optimal policy as the original sparse terminal reward.
 \end{proof}
 
+\subsection{Implementation Details}
+\label{sec:appendix_impl_details}
+
+Our implementation consists of three stages: trajectory scorer training,
+step-level attribution construction, and final PRM training.
+Unless otherwise stated, all components use Qwen3-4B-Instruct-2507 as the
+backbone.
+
+\paragraph{Trajectory scorer training}
+We randomly sample 220K trajectories from Math-Shepherd and extract final-layer
+hidden states as step representations.
+The scorer is a single-layer BiLSTM trained with batch size 128 and learning
+rate \(1\times10^{-4}\), with early stopping using patience 5.
+We split the data into train/validation/test sets with ratio \(0.8/0.1/0.1\).
+
+\paragraph{Step-level attribution construction}
+We compute local attribution with Integrated Gradients using 64 integration
+steps and use the trajectory-scorer logit as the attribution target.
+For each step, we also compute a causal ablation score by replacing the step
+feature with the baseline vector and measuring the score change.
+The global prior is built through cross-trajectory semantic nearest-neighbor
+retrieval.
+We use Faiss \citep{douze2024faiss} with an IVF4096\_HNSW32,Flat index for
+approximate search.
+From a search pool of 400 trajectories, we retrieve the top 50 neighbors and
+compute similarity-weighted reward statistics using ReLU-based weights.
+
+\paragraph{PRM training}
+The constructed local and global signals are then used to supervise the final
+PRM.
+We perform LoRA fine-tuning on the backbone with a maximum context length of
+4096.
+Training runs for 1 epoch with learning rate \(5\times10^{-5}\) and global
+batch size 32.
+
 \subsection{Stage1 Model Selection}
 
 \begin{figure*}[h]
