@@ -81,6 +81,9 @@ the full training, attribution, and retrieval configuration to
 Appendix~\ref{sec:appendix_impl_details}, including data split, batch size,
 learning rates, epoch count, IG integration steps, and Faiss retrieval
 hyperparameters.
+For Best-of-\(N\) reranking, the main text visualizes four representative
+AceMath-RewardBench datasets, while the complete dataset-wise results are
+deferred to the appendix.
 
 \FloatBarrier
 
@@ -204,10 +207,12 @@ signals into a reward model with stronger trajectory sensitivity and cleaner
 reasoning preferences.
 
 \subsection{PRM for Inference}
-We further evaluate PRMs in inference-time reranking via Best-of-\(N\) on six
-released trajectory sets from AceMath-RewardBench:
-\textsc{CollegeMath}, \textsc{Gaokao2023en}, \textsc{GSM8K},
-\textsc{Math500}, \textsc{MMLU-STEM}, and \textsc{OlympiadBench}.
+We further evaluate PRMs in inference-time reranking via Best-of-\(N\) on the
+released trajectory sets from AceMath-RewardBench.
+In the main text, we visualize four representative datasets:
+\textsc{CollegeMath}, \textsc{Gaokao2023en}, \textsc{MMLU-STEM}, and
+\textsc{OlympiadBench}; the complete results over all released datasets are
+deferred to the appendix.
 For each dataset, we use the provided candidate trajectories, rerank them with
 each PRM, and report final-answer accuracy as a function of \(k\).
 
@@ -265,12 +270,9 @@ OLYMPIADBENCH, and OMNIMATH.}
 \vspace{0pt}
 \centering
 \includegraphics[width=\linewidth]{bon_prm_grid.pdf}
-\captionof{figure}{Best-of-\(N\) inference with different PRMs.
-Each subplot reports accuracy as a function of \(k\) on one dataset.
-For each PRM, we evaluate both \texttt{min} and \texttt{mean} aggregation and
-plot the better averaged accuracy at each \(k\).
-Candidate trajectories are subsampled with 10 fixed random seeds, and all
-reported accuracies are averaged over the resulting reranking runs.}
+\captionof{figure}{Best-of-\(N\) inference with different PRMs on four
+representative datasets.
+Each subplot reports accuracy as a function of \(k\) on one dataset.}
 \label{fig:bon_prm_grid}
 \end{minipage}
 \end{figure*}
@@ -280,14 +282,14 @@ reported accuracies are averaged over the resulting reranking runs.}
 from 10 fixed random-seed candidate samples.
 Under this fixed protocol, SPRM transfers cleanly from benchmark evaluation to
 inference-time reranking.
-Across all six plotted datasets, SPRM becomes the strongest PRM once the search
-budget is moderately large, and it is the best model on every dataset at the
-largest \(k\) shown in the figure.
+Across the four representative datasets shown in the main text, SPRM becomes
+the strongest PRM once the search budget is moderately large, and it attains
+the best accuracy at the largest \(k\) on all four plots.
 The gains are especially clear on \textsc{MMLU-STEM}, where SPRM reaches
-88.0\% and outperforms the strongest baseline by 17.0 points, and remain
-substantial on \textsc{CollegeMath}, \textsc{Gaokao2023en}, \textsc{Math500},
-and \textsc{OlympiadBench}, with gains of 6.2, 3.1, 3.0, and 3.0 points,
-respectively.
+88.0\% and outperforms the strongest baseline by 34.2 points.
+It also achieves the best \texttt{@64} accuracy on \textsc{Gaokao2023en},
+\textsc{OlympiadBench}, and \textsc{CollegeMath}, reaching 74.0\%, 26.0\%, and
+71.0\%, with margins of 28.0, 13.9, and 12.7 points, respectively.
 
 This pattern is consistent with the main evaluation results and with the
 complementary roles of the two heads in \Cref{tab:ablation_processbench}.
