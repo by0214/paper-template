@@ -214,13 +214,11 @@ each PRM, and report final-answer accuracy as a function of \(k\).
 \begin{figure*}[t]
 \centering
 \begin{minipage}[t]{0.43\textwidth}
+\vspace{0pt}
 \centering
 \scriptsize
 \setlength{\tabcolsep}{2pt}
 \renewcommand{\arraystretch}{0.9}
-\captionof{table}{ProcessBench ablations, averaged over GSM8K, MATH,
-OLYMPIADBENCH, and OMNIMATH.}
-\label{tab:ablation_processbench}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}p{0.18\columnwidth}p{0.27\columnwidth}!{\color{black!35}\vrule width 0.5pt}*{3}{C{0.12\columnwidth}}@{}}
 \toprule
@@ -259,10 +257,14 @@ OLYMPIADBENCH, and OMNIMATH.}
 \bottomrule
 \end{tabular}%
 }
+\captionof{table}{ProcessBench ablations, averaged over GSM8K, MATH,
+OLYMPIADBENCH, and OMNIMATH.}
+\label{tab:ablation_processbench}
 \end{minipage}\hfill
 \begin{minipage}[t]{0.55\textwidth}
+\vspace{0pt}
 \centering
-\includegraphics[width=\linewidth]{bon_prm_grid.pdf}
+\includegraphics[width=\linewidth,trim={0 0 0 1.2cm},clip]{bon_prm_grid.pdf}
 \captionof{figure}{Best-of-\(N\) inference with different PRMs.
 Each subplot reports accuracy as a function of \(k\) on one dataset.
 For each PRM, we evaluate both \texttt{min} and \texttt{mean} aggregation and
