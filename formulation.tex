@@ -1,0 +1,81 @@
+\section{Problem Formulation and Motivation}
+\label{sec:formulation}
+
+Consider a dataset
+\(
+\mathcal{D}=\{(\tau_i,r_i)\}_{i=1}^{N}
+\),
+where
+\(
+\tau_i=(q_i,s_{i,1},\ldots,s_{i,T_i})
+\)
+is a reasoning trajectory and \(r_i\in\{0,1\}\) is its final reward.
+We view the steps
+\(
+\mathcal{N}_i=\{s_{i,1},\ldots,s_{i,T_i}\}
+\)
+as players in a cooperative game whose payoff is the trajectory outcome.
+For a coalition \(S\subseteq\mathcal{N}_i\) with value \(v(S)\), classical
+Shapley assigns step \(t\) the expected marginal contribution
+\begin{equation}
+\label{eq:discrete_shapley}
+\phi_{i,t}^{\mathrm{sha}}
+:=
+\frac{1}{T_i!}
+\sum_{\pi\in\Pi(\mathcal{N}_i)}
+\Big[
+v\!\big(\mathrm{Pre}_{\pi}(s_{i,t})\cup\{s_{i,t}\}\big)
+-
+v\!\big(\mathrm{Pre}_{\pi}(s_{i,t})\big)
+\Big],
+\end{equation}
+where \(\Pi(\mathcal{N}_i)\) is the set of permutations and
+\(\mathrm{Pre}_{\pi}(s_{i,t})\) denotes predecessors of \(s_{i,t}\) under
+\(\pi\) \citep{shapley1953value}.
+
+This allocation principle is attractive because it formalizes credit as
+marginal contribution.
+To apply it to reasoning trajectories, we first ask what Shapley becomes when
+the temporal order of the trajectory is respected.
+If the observed reasoning order is treated as the admissible causal order, the
+allocation reduces to a prefix value difference.
+Let
+\(
+P_{i,t}=\{s_{i,1},\ldots,s_{i,t}\}
+\)
+and \(P_{i,0}=\emptyset\).
+\begin{lemma}
+\label{lem:ordered_shapley_degenerate}
+If only \(1\prec 2\prec \cdots \prec T_i\) is admissible, then
+\Cref{eq:discrete_shapley} reduces to
+\(
+\phi_{i,t}^{\mathrm{ord}}=v(P_{i,t})-v(P_{i,t-1})
+\).
+\end{lemma}
+
+The prefix value difference also has a reward-redistribution interpretation.
+In an undiscounted episodic setting, let \(v^\star(P_{i,t})\) be the optimal
+prefix value and define
+\(
+\tilde r_{i,t}^\star=v^\star(P_{i,t})-v^\star(P_{i,t-1})
+\).
+\begin{lemma}
+\label{lem:reward_shaping_invariance}
+The value-difference reward \(\tilde r_{i,t}^\star\) is a potential-based
+redistribution and preserves the optimal policy of the original terminal-reward
+problem.
+\end{lemma}
+\Cref{sec:appendix_local_credit_proofs} provides proof sketches for both
+lemmas.
+
+Together, the two lemmas show that Shapley-style marginal contribution is a
+valid credit-assignment principle for ordered reasoning.
+Under the temporal constraint, Shapley becomes a value-difference reward; under
+an ideal prefix value function, that reward can preserve the optimal policy of
+the original terminal-reward problem.
+This makes Shapley a principled target for step attribution.
+However, directly applying this principle still does not remove the fundamental
+dependence on an external strong value model or step-level value labels.
+We therefore retain Shapley's marginal-contribution rationale while eliminating
+the need for externally specified step-level value or reference distributions
+\citep{ng1999policy,pmlr-v119-sundararajan20b,ovm:conf/naacl/YuGW24}.

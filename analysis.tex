@@ -1,8 +1,9 @@
 \section{Analysis}
 \label{sec:analysis}
 In the main text, we retain only analyses that directly support our core
-claims, namely how SPRM constructs reliable local credit from outcome-only
-trajectories and how the global prior complements that local signal.
+claims: why prefix value differences are insufficient as learned PRM
+supervision, how SPRM constructs reliable local credit from outcome-only
+trajectories, and how the global reward-reshaping prior stabilizes that signal.
 Implementation-focused analyses, including Stage 1 model selection, input
 feature selection, IG baseline selection, and extended neighborhood
 diagnostics, are deferred to Appendix~\ref{sec:appendix}.
@@ -17,10 +18,12 @@ blocks: local credit construction, consistency gating, the global-prior
 branch, and head mixing.
 
 The local-credit rows first compare three ways of forming local credit.
-Using the degenerate ordered value difference alone as supervision causes an
-almost complete collapse, supporting the claim in \Cref{sec:method_local}
-that a fixed prefix difference mostly redistributes sparse outcome reward
-rather than providing a usable local signal.
+Using the degenerate ordered value difference alone as supervision substantially
+underperforms the IG-based local signal.
+This does not contradict the policy-preserving interpretation in
+\Cref{sec:formulation}; rather, it shows that a principled prefix
+redistribution is not by itself a reliable learned PRM label under imperfect
+value estimates.
 Removing the \texttt{question\_end} representation also causes a clear drop,
 showing that local attribution needs the problem-to-reasoning transition as an
 explicit boundary anchor.
@@ -44,10 +47,11 @@ We therefore use \(R_{i,t}^{\mathrm{causal}}\) in the final method.
 
 \subsection{Ablation II: Global Prior and Head Complementarity}
 The last two blocks of Table~\ref{tab:ablation_processbench} ask a different
-question: what does the global branch add beyond local credit, and does that
-gain come from semantic neighborhood structure rather than generic smoothing?
+question: what does the global reward-reshaping prior add beyond local credit,
+and does that gain come from semantic neighborhood structure rather than
+generic smoothing?
 
-The global-prior rows show that the global branch is complementary rather than
+The global-prior rows show that reward reshaping is complementary rather than
 substitutive.
 ``Global only'' is much weaker than ``Local'', which indicates that
 cross-trajectory regularities alone cannot replace trajectory-specific credit.
@@ -70,8 +74,8 @@ overall F1 and strongest \textit{Err}.
 By contrast, placing too much weight on the global head sharply weakens both
 \textit{Err} and overall F1.
 This pattern matches the intended division of labor: the local branch provides
-trajectory-specific evidence, while the global branch acts as a stabilizing
-prior rather than a replacement signal.
+trajectory-specific credit, while the global branch reshapes the reward with a
+stabilizing prior rather than replacing credit assignment.
 
 This interpretation is also supported by the auxiliary neighborhood diagnostic:
 the trajectory-mean \(\delta^{\mathrm{glo}}\) achieves an AUC of 0.856 against

@@ -42,16 +42,19 @@ directly from trajectory data itself, without relying on external judges.
 
 
 
-A multi-step reasoning trajectory can be viewed as a cooperative game in
-which reasoning steps are the players and the final trajectory reward is the
-shared payoff.
-Step credit assignment is then the problem of allocating that shared payoff
-back to individual steps.
+We propose to formulate a multi-step reasoning trajectory as a cooperative
+game, where reasoning steps are the players and the final trajectory reward is
+the shared payoff.
+The key insight of this view is to turn sparse outcome supervision into an
+allocation problem: step credit assignment becomes the problem of distributing
+the shared payoff back to individual reasoning steps.
 Without a principled allocation rule, such credit is often assigned through
 coarse heuristics such as reward broadcasting or position-based proxies.
-This makes Shapley values attractive: they allocate shared payoff by
-marginal contribution and therefore provide a natural starting point for
-turning sparse final rewards into step-level credit.
+The remaining question is how to obtain a principled allocation rule within
+this cooperative game.
+Shapley values provide a natural starting point because they allocate shared
+payoff by marginal contribution, offering a way to turn sparse final rewards
+into step-level credit.
 
 
 However, reasoning trajectories differ fundamentally from the classical
@@ -73,7 +76,6 @@ Motivated by this goal, we propose \textbf{SPRM}
 (\textbf{S}hapley-value based \textbf{P}rocess \textbf{R}eward
 \textbf{M}odel), a framework that automatically constructs trainable
 step-level supervision from outcome-only signals.
-
 Our central idea is to keep the marginal-contribution intuition of Shapley
 values while adapting it to ordered reasoning trajectories.
 SPRM combines trajectory-specific local credit, which captures how a step

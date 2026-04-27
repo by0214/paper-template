@@ -1,7 +1,7 @@
 \section{Technical appendices and supplementary material}
 \label{sec:appendix}
 
-\subsection{Proof Sketches for Local Credit Results}
+\subsection{Proof Sketches for Credit-Assignment Results}
 \label{sec:appendix_local_credit_proofs}
 
 \begin{proof}[Proof sketch of \Cref{lem:ordered_shapley_degenerate}]
@@ -23,25 +23,54 @@ Hence the discrete Shapley value reduces to
 \end{proof}
 
 \begin{proof}[Proof of \Cref{lem:reward_shaping_invariance}]
-Let the original sparse reward be zero on intermediate steps and terminal-only
-at the end of the trajectory.
-Under the optimal value function \(v^\star\), define
+Assume an undiscounted episodic problem with zero intermediate rewards and a
+terminal-only outcome.
+Assume also that the prefix \(P_{i,t}\) is the state on which the optimal value
+function is defined.
+Set
 \(
 \Phi(P_{i,t})=v^\star(P_{i,t})
 \).
-Then the dense step reward in
-\Cref{lem:reward_shaping_invariance} can be written as
+Then
 \[
 \tilde r_{i,t}^\star
-=
-\Phi(P_{i,t})-\Phi(P_{i,t-1}).
+:=
+\Phi(P_{i,t})-\Phi(P_{i,t-1})
 \]
-Therefore the shaped reward is exactly a potential-based transformation of the
-original sparse reward over prefix states.
-By the policy-invariance theorem of \citet{ng1999policy}, adding such a
-potential difference preserves the set of optimal policies.
-Hence a PRM trained on the optimal value-difference reward induces the same
-optimal policy as the original sparse terminal reward.
+is a potential-based reward transformation over prefix states.
+By the policy-invariance theorem of \citet{ng1999policy}, such a transformation
+preserves the set of optimal policies under the stated assumptions.
+The result concerns the ideal value-difference reward, not noisy learned or
+binarized PRM labels.
+\end{proof}
+
+\begin{proof}[Aumann--Shapley/IG completeness]
+Let \(F\) be differentiable along
+\(\gamma(\alpha)=B_i+\alpha(X_i-B_i)\).
+By the fundamental theorem of calculus,
+\[
+F(X_i)-F(B_i)
+=
+\int_0^1
+\nabla F(\gamma(\alpha))^\top (X_i-B_i)
+\,d\alpha .
+\]
+Decomposing the inner product over sequence positions gives the sum of IG
+attributions over those positions.
+Thus Aumann--Shapley/IG attributions allocate the full scorer difference between
+the observed trajectory and the baseline
+\citep{sundararajan2017axiomatic,pmlr-v119-sundararajan20b}.
+\end{proof}
+
+\begin{proof}[Ideal return-equivalence intuition]
+Suppose the scorer is the exact trajectory return \(F(X_i)=R(\tau_i)\), and the
+baseline value \(F(B_i)\) is constant with respect to the action sequence.
+By completeness, the sum of continuous Aumann--Shapley credits equals
+\(R(\tau_i)-F(B_i)\).
+Maximizing the summed redistributed credits is therefore equivalent to
+maximizing the original terminal return up to an action-independent constant.
+This mirrors return-equivalent reward redistribution \citep{arjona2019rudder};
+it does not apply directly to approximate scorers or binarized PRM labels.
 \end{proof}
 
 \subsection{Implementation Details}

@@ -1,9 +1,54 @@
 \section{Related Work}
 
 \textbf{Process Reward Model}
-Process reward models (PRMs) provide fine-grained reward signals at each reasoning step and have substantially improved LLM performance on complex multi-step tasks such as mathematical problem solving and code generation \citep{uesato2022solving, lightman2023lets}. Compared with outcome reward models that supervise only the final answer, PRMs can localize intermediate errors more precisely, improve temporal credit assignment, and mitigate the alignment gap where the answer is correct but the reasoning process is flawed. As a result, PRMs have become a core technique for test-time scaling (e.g., Best-of-\(N\) \citep{lin2025toolprmfinegrainedinferencescaling}) and reinforcement learning \citep{DBLP:conf/iclr/LiL25a, xi2025agentprmprocessrewardmodels, mit2025process}. Their main bottleneck, however, is that high-quality process annotations are difficult to obtain: manual labeling is expensive, limited in scale, and often subjective, which directly constrains broader PRM development and deployment.
+Process reward models (PRMs) provide fine-grained reward signals at each
+reasoning step and have substantially improved LLM performance on complex
+multi-step tasks such as mathematical problem solving and code generation
+\citep{uesato2022solving, lightman2023lets}.
+Compared with outcome reward models that supervise only the final answer, PRMs
+can localize intermediate errors more precisely, improve temporal credit
+assignment, and mitigate the alignment gap where the answer is correct but the
+reasoning process is flawed.
+As a result, PRMs have become a core technique for test-time scaling, such as
+Best-of-\(N\) \citep{lin2025toolprmfinegrainedinferencescaling}, and
+reinforcement learning
+\citep{DBLP:conf/iclr/LiL25a, xi2025agentprmprocessrewardmodels, mit2025process}.
+Their main bottleneck is that high-quality process annotations are difficult to
+obtain: manual labeling is expensive, limited in scale, and often subjective.
 
-\textbf{Automated Annotation}
-Representative automated process-labeling methods include Math-Shepherd \citep{wang2024math} and related Monte Carlo (MC)-based step annotation approaches \citep{zhang2025process, zhang-etal-2025-lessons, chen-etal-2025-better-process, ding2025scan}. As LLM capabilities have advanced, LLM-as-a-judge methods have also become increasingly popular \citep{zeng2025versaprm, duan2025efficient}. MC-based labels are often noisy, and reducing this noise usually requires substantially larger rollout budgets, which increases computational cost. Judge-based methods introduce a different issue: they can inherit bias from model pretraining and instruction tuning, sometimes preferring longer or more verbose responses, or assigning higher scores to confident and authoritative tone than to factual correctness. They are also sensitive to prompt templates and scoring criteria, so small changes in prompts can yield inconsistent reward labels for similar trajectories. Recent work therefore combines MC labels with LLM judges to balance quality and scalability \citep{wang2025athena, zhang-etal-2025-lessons}. This hybrid strategy mitigates the weaknesses of both paradigms to some extent, but substantial cost overheads---including extra rollouts and repeated judge calls---remain largely unavoidable.
+\textbf{Automated Annotation and Credit Redistribution}
+Representative automated process-labeling methods include Math-Shepherd
+\citep{wang2024math} and related Monte Carlo (MC)-based step annotation
+approaches
+\citep{zhang2025process, zhang-etal-2025-lessons, chen-etal-2025-better-process, ding2025scan}.
+As LLM capabilities have advanced, LLM-as-a-judge methods have also become
+popular \citep{zeng2025versaprm, duan2025efficient}.
+MC labels are often noisy and require large rollout budgets, while judge-based
+labels can inherit model biases and remain sensitive to prompts and scoring
+criteria.
+Recent work therefore combines MC labels with LLM judges to balance quality and
+scalability \citep{wang2025athena, zhang-etal-2025-lessons}, but extra rollouts
+and judge calls remain costly.
+Credit-assignment methods for delayed rewards provide a complementary view:
+RUDDER redistributes terminal returns through contribution analysis while
+preserving the trajectory objective in a return-equivalent decision process
+\citep{arjona2019rudder}.
+Shapley-based model explanations offer a principled allocation rule, but their
+outputs depend on how the value function, background distribution, and
+explanation context are operationalized \citep{pmlr-v119-sundararajan20b}.
+This motivates an internal differentiable scorer and Aumann--Shapley-style
+attribution rather than external distributional Shapley estimates.
 
-In contrast, our method treats reasoning trajectories as ordered structures with explicit causal constraints, and derives step-level credit assignment directly from sparse outcome signals via structured marginal-contribution decomposition. Rather than using ordered discrete value differences alone, we use that cooperative-game view to motivate a differentiable trajectory value function and an Aumann--Shapley-style local attribution signal. This mechanism requires neither intermediate annotations nor external judges. The local branch focuses on trajectory-specific contextual contribution, while the global branch provides a cross-trajectory semantic prior through nearest-neighbor statistics. In doing so, it turns sparse outcome supervision into interpretable and reusable dense supervision while reducing dependence on expensive external annotation pipelines and mitigating judge-induced bias and label instability.
+In contrast, our method treats reasoning trajectories as ordered structures with
+explicit causal constraints and derives step-level credit assignment directly
+from sparse outcome signals.
+Rather than using ordered discrete value differences alone, we use this
+cooperative-game view to motivate a differentiable trajectory scorer and an
+Aumann--Shapley-style local credit signal.
+This mechanism requires neither intermediate annotations nor external judges.
+The local branch performs trajectory-specific credit assignment, while the
+global branch provides a cross-trajectory reward-reshaping prior through
+nearest-neighbor statistics.
+In doing so, it turns sparse outcome supervision into reusable step-level
+supervision while reducing dependence on expensive external annotation
+pipelines and mitigating judge-induced bias and label instability.
